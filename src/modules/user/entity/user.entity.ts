@@ -1,9 +1,13 @@
 import { Exclude } from "class-transformer";
 import { IsEmail } from "class-validator";
-import { Column, Entity } from "typeorm";
+import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import * as bcrypt from 'bcryptjs';
 
 @Entity()
-export class userEntity{
+export class UserEntity{
+
+    @PrimaryGeneratedColumn()
+    id : number;
 
     @Column({length : 64})
     name : string
@@ -19,6 +23,14 @@ export class userEntity{
     @Column({nullable : true, length : 128})
     password : string
 
+    @BeforeInsert()
+    async hashPassword(): Promise<void> {
+        if (this.password) this.password = await bcrypt.hash(this.password, 10);
+    }
+    async validatePassword(password: string): Promise<boolean> {
+        if (this.isOAuthAccount) return true;
+        return bcrypt.compare(password, this.password);
+    }
 
     @Exclude()
     @Column({nullable : true, select : false})
@@ -70,5 +82,4 @@ export class userEntity{
     @Column({ length: 64, nullable: true })
     gender: string;
 
-    
 }
