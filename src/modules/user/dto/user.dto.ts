@@ -1,4 +1,17 @@
 import { IsEmail, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { UserEntity } from '../entity/user.entity';
+
+export interface UserJwtPayload {
+  readonly id: number;
+  readonly email: string;
+  readonly is2FAEnabled: boolean;
+}
+
+export interface UserTokensInterface {
+  readonly user?: UserEntity;
+  readonly accessToken: string;
+  readonly refreshToken: string;
+}
 
 export class CreateUserDTO {
   @IsString()
