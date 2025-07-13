@@ -19,7 +19,7 @@ export class AuthService {
         return user;
     }
 
-    async login(user : UserEntity, is2FAEnabled=false) : Promise<UserTokensInterface | null>{
+    async login(user : UserEntity, is2FAEnabled=false) : Promise<UserTokensInterface>{
         const dbUser = await this.userService.getByID(user.id);
         if(!dbUser){
             throw new NotFoundException("User not found");
