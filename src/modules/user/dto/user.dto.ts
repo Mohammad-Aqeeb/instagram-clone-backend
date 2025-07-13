@@ -1,6 +1,10 @@
 import { IsEmail, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { UserEntity } from '../entity/user.entity';
 
+export interface UserValidationDTO {
+  readonly email: string;
+  readonly password: string;
+}
 export interface UserJwtPayload {
   readonly id: number;
   readonly email: string;
