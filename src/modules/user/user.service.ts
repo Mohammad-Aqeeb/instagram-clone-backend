@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOneOptions, Repository } from 'typeorm';
 
 import { UserEntity } from './entity/user.entity';
 import { CreateUserDTO } from './dto/user.dto';
@@ -9,6 +9,17 @@ import { CreateUserDTO } from './dto/user.dto';
 export class UserService {
 
     constructor(@InjectRepository(UserEntity) private userRepository : Repository<UserEntity>){}
+
+    async setUpdateRefreshToken(id :number, hashedRefreshtoken : string){
+        this.userRepository.update(id, {hashedRefreshtoken})
+    }
+
+    async getByID(id: number, options: FindOneOptions<UserEntity> = {}): Promise<UserEntity | null> {
+        return await this.userRepository.findOne({
+            where: { id },
+            ...options,
+        });
+    }
 
     async create (payload : CreateUserDTO): Promise<UserEntity>{
         const existingUser = await this.userRepository.findOne({where : {email : payload.email}});
