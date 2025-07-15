@@ -27,6 +27,7 @@ export class UserEntity{
     async hashPassword(): Promise<void> {
         if (this.password) this.password = await bcrypt.hash(this.password, 10);
     }
+    
     async validatePassword(password: string): Promise<boolean> {
         if (this.isOAuthAccount) return true;
         return bcrypt.compare(password, this.password);
