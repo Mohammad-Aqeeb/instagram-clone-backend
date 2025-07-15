@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindOneOptions, Repository } from 'typeorm';
 
 import { UserEntity } from './entity/user.entity';
-import { CreateUserDTO } from './dto/user.dto';
+import { CreateUserDTO, UserValidationDTO } from './dto/user.dto';
 
 @Injectable()
 export class UserService {
@@ -21,13 +21,24 @@ export class UserService {
         });
     }
 
+    async getUserByEmail(email : string) : Promise<UserEntity | null>{
+        return await this.userRepository.findOne({where : {email}})
+    }
+
     async create (payload : CreateUserDTO): Promise<UserEntity>{
         const existingUser = await this.userRepository.findOne({where : {email : payload.email}});
         if(existingUser){
             throw new HttpException("User already exists", HttpStatus.BAD_REQUEST);
         }
-        
         const user = this.userRepository.create(payload);
         return await this.userRepository.save(user);
+    }
+
+    async getProfileByUsername(username : string, id : number) : Promise<UserEntity>{
+        const user = await this.userRepository.findOne({where : {username}})
+        if(!user){
+            throw new HttpException("USER_NOT_FOUND", HttpStatus.NOT_FOUND);
+        }
+        return user;
     }
 }
