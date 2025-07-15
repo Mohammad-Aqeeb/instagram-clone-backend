@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
 
 import { UserEntity } from '../user/entity/user.entity';
 import { CreateUserDTO, UserTokensInterface } from '../user/dto/user.dto';
 import { AuthService } from './auth.service';
+import { LocalAuthGuard } from './guards/local-auth/local-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -10,12 +11,14 @@ export class AuthController {
     constructor(private readonly authService : AuthService){}
 
     @Post('register')
-    async registerUser(@Body() payload : CreateUserDTO) : Promise<UserEntity>{
+    async registerUser(@Body() payload: CreateUserDTO) : Promise<UserEntity>{
         return await this.authService.register(payload);
     }
 
+    @UseGuards(LocalAuthGuard)
     @Post('login')
-    async loginUser(@Body() data: UserEntity) : Promise<UserTokensInterface>{
-        return await this.authService.login(data);
+    async loginUser(@Request() req) : Promise<UserTokensInterface>{
+        console.log(req.user);
+        return await this.authService.login(req.user);
     }
 }
