@@ -14,15 +14,20 @@ export class UserService {
         this.userRepository.update(id, {hashedRefreshtoken})
     }
 
-    async getByID(id: number, options: FindOneOptions<UserEntity> = {}): Promise<UserEntity | null> {
-        return await this.userRepository.findOne({
-            where: { id },
-            ...options,
-        });
+    async getByID(id: number, options: FindOneOptions<UserEntity> = {}): Promise<UserEntity> {
+        const user =  await this.userRepository.findOne({ where: { id }, ...options });
+        if(!user){
+            throw new HttpException("USER_NOT_FOUND", HttpStatus.NOT_FOUND);
+        }
+        return user;
     }
 
-    async getUserByEmail(email : string) : Promise<UserEntity | null>{
-        return await this.userRepository.findOne({where : {email}})
+    async getUserByEmail(email : string) : Promise<UserEntity>{
+        const user =await this.userRepository.findOne({where : {email}})
+        if(!user){
+            throw new HttpException("USER_NOT_FOUND", HttpStatus.NOT_FOUND);
+        }
+        return user
     }
 
     async create (payload : CreateUserDTO): Promise<UserEntity>{
