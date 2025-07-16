@@ -14,6 +14,20 @@ export class UserController {
     //     return await this.userService.getAll(search, req.user.id);
     // }
 
+    @Get('self')
+    async getSelf(@Request() req) : Promise<UserEntity>{
+        return this.userService.getByID(req.user.id);
+    }
+
+    // @Get('suggestions')
+    // async getSuggestions(
+    //     @Query('page') page: number,
+    //     @Query('limit') limit: number,
+    //     @Request() req
+    // ): Promise<UserSuggestion[]> {
+    //     return await this.userService.getSuggestions(page, limit, req.user.id);
+    // }
+  
     @UseGuards(JwtAuthGuard)
     @Get(':username')
     async getProfileByUsername(@Param('username') username: string, @Request() req): Promise<UserEntity> {
