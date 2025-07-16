@@ -3,6 +3,7 @@ import { IsEmail } from "class-validator";
 import { BeforeInsert, Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import * as bcrypt from 'bcryptjs';
 import { recentSearchEntity } from "./recentSearch.entity";
+import { FollowingEntity } from "./following.entity";
 
 @Entity()
 export class UserEntity{
@@ -90,5 +91,19 @@ export class UserEntity{
         onDelete: 'CASCADE',
     })
     recentSearch : recentSearchEntity[]
+
+    @OneToMany(()=> FollowingEntity, (f)=> f.user,{
+        onUpdate : 'CASCADE',
+        onDelete : 'CASCADE'
+    })
+    follower : FollowingEntity[]
+    
+    @OneToMany(()=> FollowingEntity, (f)=> f.target,{
+        onUpdate : 'CASCADE',
+        onDelete : 'CASCADE'
+    })
+    following : FollowingEntity[]
+    
+    
 
 }
