@@ -46,4 +46,8 @@ export class UserService {
         }
         return user;
     }
+
+    async getRecentSearch(id : number){
+        return 
+    }
 }
