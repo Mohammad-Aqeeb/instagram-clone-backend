@@ -50,4 +50,12 @@ export class UserService {
     async getRecentSearch(id : number){
         return 
     }
+
+    async addRecentSearch(){
+
+    }
+
+    async removeRecentSearch(){
+        
+    }
 }
