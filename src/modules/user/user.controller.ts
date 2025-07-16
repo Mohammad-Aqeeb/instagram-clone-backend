@@ -38,6 +38,11 @@ export class UserController {
         return await this.userService.addRecentSearch(+id, type, req.user.id);
     }
 
+    @Delete('recent-search/:id')
+    async removeRecentSearch(@Param('id') id: number): Promise<void> {
+        return await this.userService.removeRecentSearch(+id);
+    }
+
     @UseGuards(JwtAuthGuard)
     @Get(':username')
     async getProfileByUsername(@Param('username') username: string, @Request() req): Promise<UserEntity> {
