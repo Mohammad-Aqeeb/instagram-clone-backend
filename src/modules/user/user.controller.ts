@@ -29,7 +29,7 @@ export class UserController {
     // }
   
     @Get('recent-search')
-    async getRecentSearch(@Request() req){
+    async getRecentSearch(@Request() req) : Promise<UserEntity>{
         return await this.userService.getRecentSearch(req.user.id);
     }
 
