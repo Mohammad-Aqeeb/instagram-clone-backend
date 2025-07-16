@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserEntity } from './entity/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
@@ -28,6 +28,16 @@ export class UserController {
     //     return await this.userService.getSuggestions(page, limit, req.user.id);
     // }
   
+    @Get('recent-search')
+    async getRecentSearch(@Request() req){
+        return await this.userService.getRecentSearch(req.user.id);
+    }
+
+    @Post('recent-search')
+    async addRecentSerach(@Body('id') id: number, @Body('tag') type : 'tag' | 'user' ,@Request() req){
+        return await this.userService.addRecentSearch(+id, type, req.user.id);
+    }
+
     @UseGuards(JwtAuthGuard)
     @Get(':username')
     async getProfileByUsername(@Param('username') username: string, @Request() req): Promise<UserEntity> {
