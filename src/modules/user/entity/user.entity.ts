@@ -1,15 +1,13 @@
 import { Exclude } from "class-transformer";
 import { IsEmail } from "class-validator";
-import { BeforeInsert, Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { BeforeInsert, Column, Entity, OneToMany } from "typeorm";
 import * as bcrypt from 'bcryptjs';
-import { recentSearchEntity } from "./recentSearch.entity";
+import { RecentSearchEntity } from "./recentSearch.entity";
 import { FollowingEntity } from "./following.entity";
+import { BaseEntity } from "src/common/types/base.entity";
 
 @Entity()
-export class UserEntity{
-
-    @PrimaryGeneratedColumn()
-    id : number;
+export class UserEntity extends BaseEntity{
 
     @Column({length : 64})
     name : string
@@ -86,11 +84,11 @@ export class UserEntity{
     gender: string;
 
 
-    @OneToMany(()=> recentSearchEntity, (r)=>r.user,{
+    @OneToMany(()=> RecentSearchEntity, (r)=>r.user,{
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
     })
-    recentSearch : recentSearchEntity[]
+    recentSearch : RecentSearchEntity[]
 
     @OneToMany(()=> FollowingEntity, (f)=> f.user,{
         onUpdate : 'CASCADE',
