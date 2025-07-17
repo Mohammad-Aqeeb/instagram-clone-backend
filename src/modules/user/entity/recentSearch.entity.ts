@@ -1,11 +1,9 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, ManyToOne } from "typeorm";
 import { UserEntity } from "./user.entity";
+import { BaseEntity } from "src/common/types/base.entity";
 
 @Entity()
-export class recentSearchEntity{
-    @PrimaryGeneratedColumn()
-    id : number
-
+export class RecentSearchEntity extends BaseEntity{
     @Column()
     itemID : number
 
