@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { BaseEntity } from "src/common/types/base.entity";
+import { Column, Entity } from "typeorm";
 
 
 export interface uploadFileOption{
@@ -9,10 +10,7 @@ export interface uploadFileOption{
 }
 
 @Entity()
-export class FileEntity{
-
-    @PrimaryGeneratedColumn()
-    id : number
+export class FileEntity extends BaseEntity{
 
     @Column()
     url : string
