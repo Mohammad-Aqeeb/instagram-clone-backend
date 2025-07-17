@@ -10,10 +10,6 @@ export interface UserJwtPayload {
   readonly email: string;
   readonly is2FAEnabled: boolean;
 }
-export interface UserValidationDTO {
-  readonly email: string;
-  readonly password: string;
-}
 
 export interface UserTokensInterface {
   readonly user?: UserEntity;
