@@ -1,14 +1,24 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOneOptions, Repository } from 'typeorm';
 
 import { UserEntity } from './entity/user.entity';
-import { CreateUserDTO, UserValidationDTO } from './dto/user.dto';
+import { CreateUserDTO, UpdateUserDTO, UserValidationDTO } from './dto/user.dto';
+import { FollowingEntity } from './entity/following.entity';
+import { RecentSearchEntity } from './entity/recentSearch.entity';
+import { TagEntity } from '../posts/entity/tag.entity';
 
 @Injectable()
 export class UserService {
 
-    constructor(@InjectRepository(UserEntity) private userRepository : Repository<UserEntity>){}
+    constructor(
+        @InjectRepository(UserEntity) 
+        private userRepository : Repository<UserEntity>,
+        @InjectRepository(FollowingEntity)
+        private readonly userFollowingsRepository: Repository<FollowingEntity>,
+        @InjectRepository(RecentSearchEntity)
+        private readonly recentSearchRepository: Repository<RecentSearchEntity>,
+    ){}
 
     async setUpdateRefreshToken(id :number, hashedRefreshtoken : string){
         this.userRepository.update(id, {hashedRefreshtoken})
@@ -39,6 +49,15 @@ export class UserService {
         return await this.userRepository.save(user);
     }
 
+    async updateUser(id : number, body : Partial<UpdateUserDTO>) : Promise<UserEntity>{
+        const user = await this.userRepository.findOne({where : {id}});
+        if(!user){
+            throw new NotFoundException("user not found");
+        }
+        const newUser = Object.assign(user, body);
+        return await this.userRepository.save(newUser);
+    }
+
     async getProfileByUsername(username : string, id : number) : Promise<UserEntity>{
         const user = await this.userRepository.findOne({where : {username}})
         if(!user){
@@ -47,15 +66,62 @@ export class UserService {
         return user;
     }
 
+    async isUsernamTaken(username : string) : Promise<boolean>{
+        if(!username) throw new NotFoundException("User Not Found");
+        const user = await this.userRepository.findOne({where : {username : username}})
+        if(user) return true
+        return false;
+    }
+
+    async isEmailTaken(email : string) : Promise<boolean>{
+        if(!email) throw new NotFoundException("User Not Found");
+        const user = await this.userRepository.findOne({where : {email : email}})
+        if(user) return true
+        return false
+    }
+
     async getRecentSearch(id : number){
-        return 
+        const user = await this.userRepository
+        .createQueryBuilder("user_entity")
+        .where('user_entity.id = :id', {id})
+        .leftJoinAndSelect('user_entity.recentSearch', 'recent_search_entity')
+        .orderBy('recent_search_entity.createdAt', 'DESC')
+        .getOneOrFail();
+
+        const recentSearch = await Promise.all(
+            user.recentSearch.map(async (s)=>{
+                return s.type === 'user'
+                ? { ...(await this.userRepository.findOne({ where: { id: s.itemID } })), recentSearch : s.id}
+                : { ...(await this.userRepository.findOne({ where: { id: s.itemID } })), recentSearch : s.id}
+            }
+        ))
+        return recentSearch;
     }
 
-    async addRecentSearch(){
+    async addRecentSearch(id : number, type : 'user'| 'tag', userId : number) : Promise<RecentSearchEntity>{
 
+        const user = await this.userRepository.findOneOrFail({
+            where: { id: userId },
+            relations : ['recentSearch']
+        });
+
+        const index = user.recentSearch.findIndex((r)=>{
+            return r.id === id && r.type === type
+        })
+
+        if(index !== -1){
+            await this.recentSearchRepository.delete(user.recentSearch[index].id)
+        }
+
+        const recentSearch = await this.recentSearchRepository.save({
+            itemID : id,
+            type ,
+            user
+        })
+        return recentSearch;
     }
 
-    async removeRecentSearch(){
-        
+    async removeRecentSearch(id : number) : Promise<void>{
+        await this.recentSearchRepository.delete(id);
     }
 }
