@@ -1,8 +1,11 @@
-import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserEntity } from './entity/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
 import { Public } from '../auth/decorator/public.decorator';
+import { AuthGuard } from '@nestjs/passport';
+import { RecentSearchEntity } from './entity/recentSearch.entity';
+import { UpdateUserDTO } from './dto/user.dto';
 
 @Controller('user')
 export class UserController {
@@ -27,14 +30,14 @@ export class UserController {
     // ): Promise<UserSuggestion[]> {
     //     return await this.userService.getSuggestions(page, limit, req.user.id);
     // }
-  
+
     @Get('recent-search')
-    async getRecentSearch(@Request() req) : Promise<UserEntity>{
+    async getRecentSearch(@Request() req){
         return await this.userService.getRecentSearch(req.user.id);
     }
 
     @Post('recent-search')
-    async addRecentSerach(@Body('id') id: number, @Body('tag') type : 'tag' | 'user' ,@Request() req){
+    async addRecentSerach(@Body('id') id: number, @Body('type') type : 'tag' | 'user' ,@Request() req) : Promise<RecentSearchEntity>{
         return await this.userService.addRecentSearch(+id, type, req.user.id);
     }
 
@@ -43,9 +46,25 @@ export class UserController {
         return await this.userService.removeRecentSearch(+id);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @Public()
+    @Get('is-username-taken')
+    async isUsernameTaken(@Query('username') username: string) : Promise<boolean>{
+        return this.userService.isUsernamTaken(username)
+    }
+
+    @Public()
+    @Get('is-email-taken')
+    async isEmailTaken(@Query('email') email : string) : Promise<boolean>{
+        return this.userService.isEmailTaken(email);
+    }
+
     @Get(':username')
     async getProfileByUsername(@Param('username') username: string, @Request() req): Promise<UserEntity> {
         return await this.userService.getProfileByUsername(username, req.user.id);
+    }
+
+    @Patch(':id')
+    async updateUser(@Body() body : Partial<UpdateUserDTO>, @Request() req) : Promise<UserEntity>{
+        return this.userService.updateUser(req.user.id, body);
     }
 }
