@@ -8,6 +8,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AuthModule } from './modules/auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth/jwt-auth.guard';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -22,7 +24,12 @@ import { ConfigModule } from '@nestjs/config';
     }),
     UserModule, PostsModule, FilesModule, NotificationsModule, AuthModule],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    {
+      provide : APP_GUARD,
+      useClass : JwtAuthGuard
+    },
+    AppService],
 })
 
 export class AppModule {}
