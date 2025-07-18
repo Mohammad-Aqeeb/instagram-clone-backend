@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, Request, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserEntity } from './entity/user.entity';
 import { Public } from '../auth/decorator/public.decorator';
 import { RecentSearchEntity } from './entity/recentSearch.entity';
 import { UpdateUserDTO } from './dto/user.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('user')
 export class UserController {
@@ -56,12 +57,12 @@ export class UserController {
         return this.userService.isEmailTaken(email);
     }
 
-    // @Post('avatar')
-    // @HttpCode(HttpStatus.OK)
-    // @UseInterceptors(FileInterceptor('file'))
-    // async uploadAvatar(@UploadedFile() file: Express.Multer.File, @Request() req): Promise<PublicFileEntity> {
-    //     return await this.userService.setUserImage(file, 'avatar', req.user.id);
-    // }
+    @Post('avatar')
+    @HttpCode(HttpStatus.OK)
+    @UseInterceptors(FileInterceptor('file'))
+    async uploadAvatar(@UploadedFile() file : Express.Multer.File, @Request() req){
+        return this.userService.uploadUserImage(file, "avatar", req.user.id);
+    }
 
     @Get(':username')
     async getProfileByUsername(@Param('username') username: string, @Request() req): Promise<UserEntity> {
