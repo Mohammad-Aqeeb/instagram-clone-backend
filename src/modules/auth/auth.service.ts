@@ -28,7 +28,7 @@ export class AuthService {
     }
 
     async register(payload : CreateUserDTO) : Promise<UserEntity>{
-        const user = await this.userService.create(payload);
+        const user = await this.userService.createUser(payload);
         return user;
     }
 
