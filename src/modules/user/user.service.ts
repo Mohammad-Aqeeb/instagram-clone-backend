@@ -8,6 +8,7 @@ import { FollowingEntity } from './entity/following.entity';
 import { RecentSearchEntity } from './entity/recentSearch.entity';
 import { TagEntity } from '../posts/entity/tag.entity';
 import { take } from 'rxjs';
+import { FilesService } from '../files/files.service';
 
 @Injectable()
 export class UserService {
@@ -19,6 +20,8 @@ export class UserService {
         private readonly userFollowingsRepository: Repository<FollowingEntity>,
         @InjectRepository(RecentSearchEntity)
         private readonly recentSearchRepository: Repository<RecentSearchEntity>,
+
+        private readonly fileService : FilesService
     ){}
 
     async setUpdateRefreshToken(id :number, hashedRefreshtoken : string){
@@ -57,6 +60,32 @@ export class UserService {
         }
         const newUser = Object.assign(user, body);
         return await this.userRepository.save(newUser);
+    }
+
+    async uploadUserImage(file : Express.Multer.File, field : 'avatar', id : number){
+        const user = await this.userRepository.findOneOrFail({where : {id}});
+
+        const isAlreadyHaveImage = Boolean(user[field]);
+
+        if(isAlreadyHaveImage){
+            await this.userRepository.save({
+                ...user,
+                field : null
+            })
+            await this.fileService.deleteFile(user[field].id)
+        }
+
+        const uploadedFile = this.fileService.uploadFile({
+            file,
+            quality : field === 'avatar' ? 5 : 20,
+            imageMaxSizeMB : 20,
+            type : "image"
+        })
+
+        await this.userRepository.save({
+            ...user,
+            field : uploadedFile
+        })
     }
 
     async deleteUser(id: number): Promise<void> {
