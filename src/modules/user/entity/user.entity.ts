@@ -1,10 +1,11 @@
 import { Exclude } from "class-transformer";
 import { IsEmail } from "class-validator";
-import { BeforeInsert, Column, Entity, OneToMany } from "typeorm";
+import { BeforeInsert, Column, Entity, OneToMany, OneToOne } from "typeorm";
 import * as bcrypt from 'bcryptjs';
 import { RecentSearchEntity } from "./recentSearch.entity";
 import { FollowingEntity } from "./following.entity";
 import { BaseEntity } from "src/common/types/base.entity";
+import { FileEntity } from "src/modules/files/entity/file.entity";
 
 @Entity()
 export class UserEntity extends BaseEntity{
@@ -68,8 +69,11 @@ export class UserEntity extends BaseEntity{
     @Column({default : '#b3e6ff'})
     color : string
 
-
-
+    @OneToOne(()=> FileEntity, {
+        eager : true,
+        nullable : true
+    })
+    avatar : FileEntity
 
     @Column({ length: 1024, nullable: true })
     description: string;
