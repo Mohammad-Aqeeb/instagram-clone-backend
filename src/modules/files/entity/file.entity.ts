@@ -3,7 +3,7 @@ import { Column, Entity } from "typeorm";
 
 
 export interface uploadFileOption{
-    // file : Express.Multer.File,
+    file : Express.Multer.File,
     quality : number,
     imageMaxSizeMB : number,
     type : 'image' | 'video'
