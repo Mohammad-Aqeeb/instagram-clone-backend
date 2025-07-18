@@ -12,7 +12,7 @@ export class FilesService {
 
     constructor(@InjectRepository(FileEntity) private fileEntity : Repository<FileEntity>){}
 
-    async uplaodFile(options : uploadFileOption) : Promise<FileEntity>{
+    async uploadFile(options : uploadFileOption) : Promise<FileEntity>{
         const validImageType = ['image/jpg', 'image/jpeg', 'image/png']
         const validImageSize = 1024 * 1024 * options.imageMaxSizeMB;
 
