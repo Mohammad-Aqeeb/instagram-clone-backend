@@ -1,9 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserEntity } from './entity/user.entity';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
 import { Public } from '../auth/decorator/public.decorator';
-import { AuthGuard } from '@nestjs/passport';
 import { RecentSearchEntity } from './entity/recentSearch.entity';
 import { UpdateUserDTO } from './dto/user.dto';
 
@@ -12,10 +10,10 @@ export class UserController {
   
     constructor(private userService : UserService){}
 
-    // @Get()
-    //     async getAll(@Query('search') search: string, @Request() req): Promise<UserEntity[]> {
-    //     return await this.userService.getAll(search, req.user.id);
-    // }
+    @Get()
+        async getAll(@Query('search') search: string, @Request() req): Promise<UserEntity[]> {
+        return await this.userService.getAll(search, req.user.id);
+    }
 
     @Get('self')
     async getSelf(@Request() req) : Promise<UserEntity>{
@@ -58,6 +56,13 @@ export class UserController {
         return this.userService.isEmailTaken(email);
     }
 
+    // @Post('avatar')
+    // @HttpCode(HttpStatus.OK)
+    // @UseInterceptors(FileInterceptor('file'))
+    // async uploadAvatar(@UploadedFile() file: Express.Multer.File, @Request() req): Promise<PublicFileEntity> {
+    //     return await this.userService.setUserImage(file, 'avatar', req.user.id);
+    // }
+
     @Get(':username')
     async getProfileByUsername(@Param('username') username: string, @Request() req): Promise<UserEntity> {
         return await this.userService.getProfileByUsername(username, req.user.id);
@@ -66,5 +71,15 @@ export class UserController {
     @Patch(':id')
     async updateUser(@Body() body : Partial<UpdateUserDTO>, @Request() req) : Promise<UserEntity>{
         return this.userService.updateUser(req.user.id, body);
+    }
+
+    @Post('follow/:id')
+    async followUser(@Param('id') id : number , @Request() req): Promise<void>{
+        return this.userService.followUser(id, req.user.id);
+    }
+
+    @Post('unfollow/:id')
+    async unfollowUser(@Param('id') id : number, @Request() req): Promise<void>{
+        return this.userService.unfollowUser(id, req.user.id);
     }
 }
