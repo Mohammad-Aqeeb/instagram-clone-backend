@@ -1,12 +1,13 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOneOptions, Repository } from 'typeorm';
+import { FindOneOptions, Not, Repository } from 'typeorm';
 
 import { UserEntity } from './entity/user.entity';
 import { CreateUserDTO, UpdateUserDTO, UserValidationDTO } from './dto/user.dto';
 import { FollowingEntity } from './entity/following.entity';
 import { RecentSearchEntity } from './entity/recentSearch.entity';
 import { TagEntity } from '../posts/entity/tag.entity';
+import { take } from 'rxjs';
 
 @Injectable()
 export class UserService {
@@ -40,7 +41,7 @@ export class UserService {
         return user
     }
 
-    async create (payload : CreateUserDTO): Promise<UserEntity>{
+    async createUser(payload : CreateUserDTO): Promise<UserEntity>{
         const existingUser = await this.userRepository.findOne({where : {email : payload.email}});
         if(existingUser){
             throw new HttpException("User already exists", HttpStatus.BAD_REQUEST);
@@ -58,12 +59,30 @@ export class UserService {
         return await this.userRepository.save(newUser);
     }
 
+    async deleteUser(id: number): Promise<void> {
+        await this.userRepository.delete(id);
+    }
+
     async getProfileByUsername(username : string, id : number) : Promise<UserEntity>{
-        const user = await this.userRepository.findOne({where : {username}})
-        if(!user){
-            throw new HttpException("USER_NOT_FOUND", HttpStatus.NOT_FOUND);
-        }
+        const user = await this.userRepository.createQueryBuilder('user')
+            .where('user.username = :username', {username})
+            .getOneOrFail()
+
         return user;
+    }
+
+    async enable2FA(id : number) : Promise<boolean>{
+        await this.userRepository.update(id,{
+            isTwoFactorEnable : true
+        })
+        return true;
+    }
+
+    async set2FaSecret(id : number, secret : string) : Promise<boolean>{
+        await this.userRepository.update(id, {
+            twoFactorSecret : secret
+        })
+        return true;
     }
 
     async isUsernamTaken(username : string) : Promise<boolean>{
@@ -80,11 +99,68 @@ export class UserService {
         return false
     }
 
+    async getAll(search : string, id : number) : Promise<UserEntity[]>{
+        if(search.trim().length === 0){
+            return await this.userRepository.find({
+                where : {
+                    id : Not(id)
+                },
+                take : 10
+            });
+        }
+
+        const users = await this.userRepository.createQueryBuilder('user_entity')
+            .select()
+            .where('user_entity.username ILIKE :search', {search : `%${search}%`})
+            .orWhere('user_entity.name ILIKE :search', {search : `%${search}%`})
+            .orWhere('user_entity.email ILIKE :search', {search : `%${search}%`})
+            .getMany()
+
+
+        const currentUserIndexInSearchResult = users.findIndex((u) => u.id === id);
+        if (currentUserIndexInSearchResult !== -1) users.splice(currentUserIndexInSearchResult, 1);
+
+        return users;
+    }
+
+    async followUser(id : number, userId : number) : Promise<void>{
+        const user = await this.userRepository.findOneOrFail({where : {id : userId}});
+        const target = await this.userRepository.findOneOrFail({where : {id}});
+
+        await this.userFollowingsRepository.save({
+            user,
+            target
+        })
+        // await this.notificationsService.create({
+        //     type: NotificationTypes.FOLLOWED,
+        //     receiverUserID: targetID,
+        //     initiatorUserID: currentUserID,
+        // });
+    }
+
+    async unfollowUser(id : number, userId : number): Promise<void>{
+        const follow = await this.getUserFollowed(id,userId);
+
+        if(follow){
+            await this.userFollowingsRepository.delete(follow.id);
+            // await this.notificationsService.deleteLastByInitiatorID(userID, targetID);
+        }
+    }
+
+    async getUserFollowed(id : number, userId : number) : Promise<FollowingEntity>{
+        const following = this.userFollowingsRepository.createQueryBuilder('follow')
+            .where('follow.user.id = :userId', {userId})
+            .andWhere('follow.target = :id', {id})
+            .getOneOrFail();
+
+        return following;
+    }
+
     async getRecentSearch(id : number){
         const user = await this.userRepository
-        .createQueryBuilder("user_entity")
-        .where('user_entity.id = :id', {id})
-        .leftJoinAndSelect('user_entity.recentSearch', 'recent_search_entity')
+        .createQueryBuilder("user")
+        .where('user.id = :id', {id})
+        .leftJoinAndSelect('user.recentSearch', 'recent_search_entity')
         .orderBy('recent_search_entity.createdAt', 'DESC')
         .getOneOrFail();
 
