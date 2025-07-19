@@ -27,11 +27,11 @@ export class PostEntity extends BaseEntity{
     @OneToMany(()=> CommentEntity, (c)=> c.post,{
         cascade : true
     })
-    comment : CommentEntity
+    comment : CommentEntity[]
     commentNumber : string
 
-
-
+    // @OneToMany(() => ReportEntity, (report) => report.reported)
+    // reports: ReportEntity[];
 
     @Column({ type: 'boolean', default: false })
     isVideo: boolean;
@@ -46,5 +46,14 @@ export class PostEntity extends BaseEntity{
     getFileUrl(){
         this.fileUrl = this.file.url;
     }
+
+    // @OneToMany(() => PostFeedEntity, (pf) => pf.post, {
+    //     cascade: true,
+    // })
+    // feeds: PostFeedEntity[];
+
+    // isViewerLiked: boolean;
+    // isViewerSaved: boolean;
+    // isViewerInPhoto: boolean;
 
 }
