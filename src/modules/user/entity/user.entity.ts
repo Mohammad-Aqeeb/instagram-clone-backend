@@ -1,11 +1,14 @@
 import { Exclude } from "class-transformer";
 import { IsEmail } from "class-validator";
-import { BeforeInsert, Column, Entity, OneToMany, OneToOne } from "typeorm";
+import { BeforeInsert, Column, Entity, JoinColumn, OneToMany, OneToOne } from "typeorm";
 import * as bcrypt from 'bcryptjs';
 import { RecentSearchEntity } from "./recentSearch.entity";
 import { FollowingEntity } from "./following.entity";
 import { BaseEntity } from "src/common/types/base.entity";
 import { FileEntity } from "src/modules/files/entity/file.entity";
+import { PostEntity } from "src/modules/posts/entity/post.entity";
+import { PostLikeEntity } from "src/modules/posts/entity/postLike.entity";
+import { CommentEntity } from "src/modules/posts/entity/comment.entity";
 
 @Entity()
 export class UserEntity extends BaseEntity{
@@ -73,6 +76,7 @@ export class UserEntity extends BaseEntity{
         eager : true,
         nullable : true
     })
+    @JoinColumn()
     avatar : FileEntity
 
     @Column({ length: 1024, nullable: true })
@@ -87,6 +91,24 @@ export class UserEntity extends BaseEntity{
     @Column({ length: 64, nullable: true })
     gender: string;
 
+    @OneToMany(()=> PostEntity, (p)=> p.user,{
+        onUpdate : 'CASCADE',
+        onDelete : 'CASCADE'
+    })
+    posts : PostEntity[];
+    postsNumber?: number;
+
+    @OneToMany(()=> PostLikeEntity, (p)=> p.user, {
+        onUpdate : 'CASCADE',
+        onDelete : 'CASCADE'
+    })
+    likedPost : PostLikeEntity[];
+
+    @OneToMany(()=> CommentEntity, (c)=> c.user, {
+        onUpdate : 'CASCADE',
+        onDelete : 'CASCADE'
+    })
+    commentedPost : CommentEntity[];
 
     @OneToMany(()=> RecentSearchEntity, (r)=>r.user,{
         onUpdate: 'CASCADE',
