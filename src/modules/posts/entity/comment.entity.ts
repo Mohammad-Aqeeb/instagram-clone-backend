@@ -1,7 +1,8 @@
-import { Column, Entity, ManyToOne } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany } from "typeorm";
 import { PostEntity } from "./post.entity";
 import { UserEntity } from "src/modules/user/entity/user.entity";
 import { BaseEntity } from "src/common/types/base.entity";
+import { CommentLikeEntity } from "./commentLike.entity";
 
 @Entity()
 export class CommentEntity extends BaseEntity{
@@ -20,4 +21,13 @@ export class CommentEntity extends BaseEntity{
         onDelete: 'CASCADE',
     })
     user : UserEntity
+
+    @OneToMany(()=> CommentLikeEntity, (cl)=>cl.comment, {
+        cascade : true,
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+    })
+    commentLikes : CommentLikeEntity[]
+
+
 }
