@@ -9,6 +9,7 @@ import { FileEntity } from "src/modules/files/entity/file.entity";
 import { PostEntity } from "src/modules/posts/entity/post.entity";
 import { PostLikeEntity } from "src/modules/posts/entity/postLike.entity";
 import { CommentEntity } from "src/modules/posts/entity/comment.entity";
+import { CommentLikeEntity } from "src/modules/posts/entity/commentLike.entity";
 
 @Entity()
 export class UserEntity extends BaseEntity{
@@ -109,6 +110,12 @@ export class UserEntity extends BaseEntity{
         onDelete : 'CASCADE'
     })
     commentedPost : CommentEntity[];
+
+    @OneToMany(() => CommentLikeEntity, (cm) => cm.user, {
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+    })
+    likedComments: CommentLikeEntity[];
 
     @OneToMany(()=> RecentSearchEntity, (r)=>r.user,{
         onUpdate: 'CASCADE',
