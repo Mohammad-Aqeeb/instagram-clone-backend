@@ -8,7 +8,10 @@ import { RecentSearchEntity } from './entity/recentSearch.entity';
 import { FilesModule } from '../files/files.module';
 
 @Module({
-  imports : [TypeOrmModule.forFeature([UserEntity, FollowingEntity, RecentSearchEntity, FilesModule])],
+  imports : [
+    TypeOrmModule.forFeature([UserEntity, FollowingEntity, RecentSearchEntity]),
+    FilesModule
+  ],
   controllers: [UserController],
   providers: [UserService],
   exports : [UserService]
