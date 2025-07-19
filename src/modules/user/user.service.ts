@@ -9,6 +9,7 @@ import { RecentSearchEntity } from './entity/recentSearch.entity';
 import { TagEntity } from '../posts/entity/tag.entity';
 import { take } from 'rxjs';
 import { FilesService } from '../files/files.service';
+import { FileEntity } from '../files/entity/file.entity';
 
 @Injectable()
 export class UserService {
@@ -62,7 +63,11 @@ export class UserService {
         return await this.userRepository.save(newUser);
     }
 
-    async uploadUserImage(file : Express.Multer.File, field : 'avatar', id : number){
+    async deleteUser(id: number): Promise<void> {
+        await this.userRepository.delete(id);
+    }
+
+    async uploadUserImage(file : Express.Multer.File, field : 'avatar', id : number) : Promise<FileEntity>{
         const user = await this.userRepository.findOneOrFail({where : {id}});
 
         const isAlreadyHaveImage = Boolean(user[field]);
@@ -86,10 +91,21 @@ export class UserService {
             ...user,
             field : uploadedFile
         })
+
+        return uploadedFile;
     }
 
-    async deleteUser(id: number): Promise<void> {
-        await this.userRepository.delete(id);
+    async deleteUserImage(field : 'avatar', id : number) : Promise<void>{
+        const user = await this.userRepository.findOneOrFail({where : {id}});
+
+        const isAvatar = Boolean(user[field]);
+        if(isAvatar){
+            await this.userRepository.save({
+                ...user,
+                field : null
+            })
+        }
+        await this.fileService.deleteFile(user[field].id);
     }
 
     async getProfileByUsername(username : string, id : number) : Promise<UserEntity>{
