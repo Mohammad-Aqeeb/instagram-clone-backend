@@ -5,6 +5,7 @@ import { Public } from '../auth/decorator/public.decorator';
 import { RecentSearchEntity } from './entity/recentSearch.entity';
 import { UpdateUserDTO } from './dto/user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { FileEntity } from '../files/entity/file.entity';
 
 @Controller('user')
 export class UserController {
@@ -60,8 +61,13 @@ export class UserController {
     @Post('avatar')
     @HttpCode(HttpStatus.OK)
     @UseInterceptors(FileInterceptor('file'))
-    async uploadAvatar(@UploadedFile() file : Express.Multer.File, @Request() req){
+    async uploadAvatar(@UploadedFile() file : Express.Multer.File, @Request() req) : Promise<FileEntity>{
         return this.userService.uploadUserImage(file, "avatar", req.user.id);
+    }
+
+    @Delete('avtar')
+    async deleteAvatar(@Request() req) : Promise<void>{
+        return this.userService.deleteUserImage('avatar', req.user.id);
     }
 
     @Get(':username')
