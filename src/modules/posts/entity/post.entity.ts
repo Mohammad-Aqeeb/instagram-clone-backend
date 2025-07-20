@@ -1,16 +1,22 @@
 import { BaseEntity } from "src/common/types/base.entity";
 import { UserEntity } from "src/modules/user/entity/user.entity";
-import { AfterLoad, Column, Entity, ManyToOne, OneToMany, OneToOne } from "typeorm";
+import { AfterLoad, Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne } from "typeorm";
 import { PostLikeEntity } from "./postLike.entity";
 import { CommentEntity } from "./comment.entity";
 import { FileEntity } from "src/modules/files/entity/file.entity";
+import { ReportEntity } from "./report.entity";
+import { TagEntity } from "./tag.entity";
 
 @Entity()
 export class PostEntity extends BaseEntity{
     @Column({nullable : true})
     description : string
 
-
+    @ManyToMany(()=> TagEntity, (t)=> t.posts,{
+        cascade: true,
+    })  
+    @JoinTable()
+    tags : TagEntity[]
 
     @ManyToOne(()=> UserEntity, (u)=> u.posts, {
         cascade : true,
@@ -30,8 +36,10 @@ export class PostEntity extends BaseEntity{
     comment : CommentEntity[]
     commentNumber : string
 
-    // @OneToMany(() => ReportEntity, (report) => report.reported)
-    // reports: ReportEntity[];
+    @OneToMany(()=> ReportEntity, (r)=> r.reported, {
+
+    })
+    reports : ReportEntity[]
 
     @Column({ type: 'boolean', default: false })
     isVideo: boolean;
