@@ -10,6 +10,7 @@ import { TagEntity } from '../posts/entity/tag.entity';
 import { take } from 'rxjs';
 import { FilesService } from '../files/files.service';
 import { FileEntity } from '../files/entity/file.entity';
+import { PostsService } from '../posts/posts.service';
 
 @Injectable()
 export class UserService {
@@ -22,6 +23,7 @@ export class UserService {
         @InjectRepository(RecentSearchEntity)
         private readonly recentSearchRepository: Repository<RecentSearchEntity>,
 
+        private readonly postService : PostsService,
         private readonly fileService : FilesService
     ){}
 
@@ -193,12 +195,16 @@ export class UserService {
     }
 
     async getUserFollowed(id : number, userId : number) : Promise<FollowingEntity>{
-        const following = this.userFollowingsRepository.createQueryBuilder('follow')
+        const following = await this.userFollowingsRepository.createQueryBuilder('follow')
             .where('follow.user.id = :userId', {userId})
             .andWhere('follow.target = :id', {id})
             .getOneOrFail();
 
         return following;
+    }
+
+    async getIsUserFollowed(currentUserID : number, targetID : number) {
+        return Boolean(this.getUserFollowed(targetID, currentUserID));
     }
 
     async getRecentSearch(id : number){
@@ -213,7 +219,7 @@ export class UserService {
             user.recentSearch.map(async (s)=>{
                 return s.type === 'user'
                 ? { ...(await this.userRepository.findOne({ where: { id: s.itemID } })), recentSearch : s.id}
-                : { ...(await this.userRepository.findOne({ where: { id: s.itemID } })), recentSearch : s.id}
+                : { ...(await this.postService.getTagById(s.itemID)), recentSearch : s.id}
             }
         ))
         return recentSearch;
