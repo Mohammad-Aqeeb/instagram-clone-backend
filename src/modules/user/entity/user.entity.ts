@@ -11,6 +11,7 @@ import { PostLikeEntity } from "src/modules/posts/entity/postLike.entity";
 import { CommentEntity } from "src/modules/posts/entity/comment.entity";
 import { CommentLikeEntity } from "src/modules/posts/entity/commentLike.entity";
 import { ReportEntity } from "src/modules/posts/entity/report.entity";
+import { PostFeedEntity } from "src/modules/posts/entity/postFeed.entity";
 
 @Entity()
 export class UserEntity extends BaseEntity{
@@ -139,6 +140,8 @@ export class UserEntity extends BaseEntity{
     })
     following : FollowingEntity[]
     
-    
+    @OneToMany(()=> PostFeedEntity, (pf)=> pf.user,{
 
+    })
+    postfeed : PostFeedEntity[]
 }
