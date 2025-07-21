@@ -7,6 +7,7 @@ import { UserEntity } from '../user/entity/user.entity';
 import { UserService } from '../user/user.service';
 import { CreatePostDTO } from './dto/post.dto';
 import { FilesService } from '../files/files.service';
+import { PostFeedEntity } from './entity/postFeed.entity';
 
 @Injectable()
 export class PostsService {
@@ -14,6 +15,7 @@ export class PostsService {
     constructor(
         @InjectRepository(PostEntity) private postRepository : Repository<PostEntity>,
         @InjectRepository(TagEntity) private tagRepository : Repository<TagEntity>,
+        @InjectRepository(PostFeedEntity) private postFeedRepository : Repository<PostFeedEntity>,
 
         @Inject(forwardRef(() => UserService))
         private readonly userService : UserService,
@@ -88,6 +90,39 @@ export class PostsService {
             user
         })
 
+        try{
+            const parseTag = JSON.parse(payload.tags);
+            const formattedTag = await Promise.all(
+                parseTag.map(async (tag)=>{
+                const dbTag = await this.tagRepository.findOne({where : {name : tag}})
+                if(!dbTag){
+                    const tagEntity = await this.tagRepository.save({ name: tag });
+                    return tagEntity
+                }
+                else{
+                    return dbTag
+                }
+            }))
 
+            const savedPost = await this.postRepository.save({
+                ...post,
+                tags : formattedTag
+            })
+
+            const userFollowers = await this.userService.getUserFollower(id);
+
+            await Promise.all(
+                userFollowers.map(async(follower)=>{
+                    await this.postFeedRepository.save({
+                        user : follower,
+                        post : savedPost
+                    })
+                })
+            )
+        }
+        catch(error){
+            console.log(error)
+        }
+        return post
     }
 }
