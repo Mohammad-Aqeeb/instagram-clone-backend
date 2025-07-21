@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, OneToMany } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany, TreeChildren, TreeParent } from "typeorm";
 import { PostEntity } from "./post.entity";
 import { UserEntity } from "src/modules/user/entity/user.entity";
 import { BaseEntity } from "src/common/types/base.entity";
@@ -29,5 +29,8 @@ export class CommentEntity extends BaseEntity{
     })
     commentLikes : CommentLikeEntity[]
 
-
+    @TreeParent()
+    parentComment: CommentEntity;
+    @TreeChildren()
+    replies: CommentEntity[];
 }
