@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FileEntity, uploadFileOption } from './entity/file.entity';
 import { Repository } from 'typeorm';
-import sharp from 'sharp';
+import * as sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import { extname } from 'path';
 import { S3 } from 'aws-sdk';
