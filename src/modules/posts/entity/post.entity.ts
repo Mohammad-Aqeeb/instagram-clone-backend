@@ -6,6 +6,7 @@ import { CommentEntity } from "./comment.entity";
 import { FileEntity } from "src/modules/files/entity/file.entity";
 import { ReportEntity } from "./report.entity";
 import { TagEntity } from "./tag.entity";
+import { PostFeedEntity } from "./postFeed.entity";
 
 @Entity()
 export class PostEntity extends BaseEntity{
@@ -55,13 +56,13 @@ export class PostEntity extends BaseEntity{
         this.fileUrl = this.file.url;
     }
 
-    // @OneToMany(() => PostFeedEntity, (pf) => pf.post, {
-    //     cascade: true,
-    // })
-    // feeds: PostFeedEntity[];
+    @OneToMany(() => PostFeedEntity, (pf) => pf.post, {
+        cascade: true,
+    })
+    feeds: PostFeedEntity[];
 
-    // isViewerLiked: boolean;
-    // isViewerSaved: boolean;
-    // isViewerInPhoto: boolean;
+    isViewerLiked: boolean;
+    isViewerSaved: boolean;
+    isViewerInPhoto: boolean;
 
 }
