@@ -125,4 +125,8 @@ export class PostsService {
         }
         return post
     }
+
+    async deletePost(id : number) : Promise<void>{
+        this.postRepository.delete(id);
+    }
 }
