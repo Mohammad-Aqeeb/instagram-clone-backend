@@ -207,6 +207,15 @@ export class UserService {
         return Boolean(this.getUserFollowed(targetID, currentUserID));
     }
 
+    async getUserFollower(id : number) : Promise<FollowingEntity[]>{
+        const follower = this.userFollowingsRepository.createQueryBuilder('following')
+            .leftJoinAndSelect('follow.user' , 'user')
+            .andWhere('follow.target.id =: id' , {id})
+            .getMany();
+            
+        return follower;
+    }
+
     async getRecentSearch(id : number){
         const user = await this.userRepository
         .createQueryBuilder("user")
