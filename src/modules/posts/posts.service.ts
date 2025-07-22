@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { PostEntity } from './entity/post.entity';
-import { Repository } from 'typeorm';
+import { DataSource, getManager, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TagEntity } from './entity/tag.entity';
 import { UserEntity } from '../user/entity/user.entity';
@@ -27,7 +27,9 @@ export class PostsService {
 
         @Inject(forwardRef(() => UserService))
         private readonly userService : UserService,
-        private readonly fileService : FilesService
+        private readonly fileService : FilesService,
+
+        private dataSource : DataSource
     ){}
 
     async getPostById(id : number) : Promise<PostEntity>{
@@ -35,6 +37,50 @@ export class PostsService {
             where : {id},
             relations : ['user', 'tag']
         })
+    }
+
+    async getComments(id : number, userId : number) : Promise<Partial<CommentEntity>[]>{
+
+        const currentUserRootComment = await this.commentRepository.createQueryBuilder('comment')
+            .leftJoinAndSelect('comment.user', 'user')
+            .leftJoinAndSelect('user.avatar', 'avatar')
+            .where('user.id = :userId', {userId})
+            .andWhere('comment.post.id = :id', {id})
+            .orderBy('comment.createdAt', 'DESC')
+            .getMany()
+
+        const RestUserRootComment = await this.commentRepository.createQueryBuilder('comment')
+            .leftJoinAndSelect('comment.user', 'user')
+            .leftJoinAndSelect('user.avatar', 'avtar')
+            .where('user.id != :userId', {userId})
+            .where('comment.post.id = :id', {id})
+            .orderBy('comment.createdAt', 'DESC')
+            .getMany()
+    
+        console.log(currentUserRootComment);
+        console.log(RestUserRootComment);
+        
+        const allComments = [...currentUserRootComment, ...RestUserRootComment]
+
+        const treeRepository = this.dataSource.getTreeRepository(CommentEntity);
+
+        return await Promise.all(
+            allComments.map(async (c) => {
+                const { replies } = await treeRepository.findDescendantsTree(c, { relations: ['user'] });
+
+                return {
+                ...c,
+                replies,
+                isViewerLiked: Boolean(
+                    await this.postLikeRepository
+                    .createQueryBuilder('commentLike')
+                    .where('commentLike.user.id = :currentUserID', { userId })
+                    .andWhere('commentLike.comment.id = :commentID', { commentID: c.id })
+                    .getRawOne()
+                ),
+                };
+            })
+        );
     }
 
     async getLikes(id : number, currentUserID : number): Promise<Partial<UserEntity>[]>{
@@ -216,8 +262,8 @@ export class PostsService {
 
     async toggleLike(id : number, userId : number){
         const like = await this.postLikeRepository.createQueryBuilder('like')
-            .where('like.post.id := id', {id})
-            .andWhere('like.user.id := userId', {userId})
+            .where('like.post.id =: id', {id})
+            .andWhere('like.user.id =: userId', {userId})
             .getOne();
 
         const post = await this.postRepository.findOneOrFail({where : {id}, relations : ['user']});
@@ -273,7 +319,7 @@ export class PostsService {
     async toggleCommentLike(id : number, userId : number){
         const CommentLike = await this.commentLikeRepository.createQueryBuilder('like')
             .where('like.comment.id =: id ', {id})
-            .andWhere('like.user := userId', {userId})
+            .andWhere('like.user =: userId', {userId})
             .getOne();
 
         if(CommentLike){
