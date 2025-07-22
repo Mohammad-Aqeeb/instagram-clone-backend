@@ -99,6 +99,11 @@ export class PostsService {
         )
     }
 
+    async getLikedPostsByUserID(id: number): Promise<PostEntity[]> {
+        const likes = await this.postLikeRepository.createQueryBuilder('likes').where('user.id = :id', { id }).getMany();
+        return likes.map((l) => l.post);
+    }
+    
     async getIsUserLikedPost(user: UserEntity, post: PostEntity): Promise<boolean> {
         return Boolean(await this.postLikeRepository.findOne({ where: { user, post }, relations: ['user', 'post'] }));
     }
