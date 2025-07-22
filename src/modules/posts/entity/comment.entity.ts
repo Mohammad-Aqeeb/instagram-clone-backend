@@ -1,10 +1,11 @@
-import { Column, Entity, ManyToOne, OneToMany, TreeChildren, TreeParent } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany, Tree, TreeChildren, TreeParent } from "typeorm";
 import { PostEntity } from "./post.entity";
 import { UserEntity } from "src/modules/user/entity/user.entity";
 import { BaseEntity } from "src/common/types/base.entity";
 import { CommentLikeEntity } from "./commentLike.entity";
 
 @Entity()
+@Tree('materialized-path')
 export class CommentEntity extends BaseEntity{
     @Column()
     text : string
