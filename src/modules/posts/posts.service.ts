@@ -5,11 +5,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { TagEntity } from './entity/tag.entity';
 import { UserEntity } from '../user/entity/user.entity';
 import { UserService } from '../user/user.service';
-import { CreatePostDTO, UpdatePostDTO } from './dto/post.dto';
+import { CreateCommentDTO, CreatePostDTO, UpdatePostDTO } from './dto/post.dto';
 import { FilesService } from '../files/files.service';
 import { PostFeedEntity } from './entity/postFeed.entity';
 import { CommentEntity } from './entity/comment.entity';
 import { PostReportTypes, ReportEntity } from './entity/report.entity';
+import { PostLikeEntity } from './entity/postLike.entity';
 
 @Injectable()
 export class PostsService {
@@ -20,10 +21,10 @@ export class PostsService {
         @InjectRepository(PostFeedEntity) private postFeedRepository : Repository<PostFeedEntity>,
         @InjectRepository(CommentEntity) private commentRepository : Repository<CommentEntity>,
         @InjectRepository(ReportEntity) private reportRepository : Repository<ReportEntity>,
+        @InjectRepository(PostLikeEntity) private postLikeRepository : Repository<PostLikeEntity>,
 
         @Inject(forwardRef(() => UserService))
         private readonly userService : UserService,
-
         private readonly fileService : FilesService
     ){}
 
@@ -211,7 +212,48 @@ export class PostsService {
         console.log('share', id, userId);
     }
 
+    async toggleLike(id : number, userId : number){
+        const like = await this.postLikeRepository.createQueryBuilder('like')
+            .where('like.post.id := id', {id})
+            .andWhere('like.user.id := userId', {userId})
+            .getOne();
+
+        const post = await this.postRepository.findOneOrFail({where : {id}, relations : ['user']});
+        const likedPostUser = post.user;
+
+        if(like){
+            await this.postLikeRepository.delete(like.id);
+            // await this.notificationsService.deleteByPostID(postID, currentUserID);
+        }
+        else{
+            const newPostLike = await this.postLikeRepository.save({
+                post : {id},
+                user : {id : userId}
+            })
+            // await this.notificationsService.create({
+            //     type: NotificationTypes.LIKED_PHOTO,
+            //     receiverUserID: author.id,
+            //     initiatorUserID: currentUserID,
+            //     postID,
+            // });
+        }
+    }
+
+    async createComment({postID, replyCommentID, text} : CreateCommentDTO, userId : number) : Promise<CommentEntity>{
+        const user = await this.userService.getByID(userId);
+        const post = await this.postRepository.findOneOrFail({where : {id : postID}});
+
+        const parentComment = replyCommentID ? await this.commentRepository.findOneOrFail({where : {id : replyCommentID}}) : null;
     
+        const newComment = await this.commentRepository.save({
+            text,
+            post,
+            user,
+            parentComment
+        })
+
+        return newComment
+    }
 
     async deleteComment(id : number) : Promise<void>{
         await this.commentRepository.delete(id)
