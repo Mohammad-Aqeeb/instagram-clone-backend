@@ -24,10 +24,10 @@ export class PostsController {
         return await this.postService.getPostById(id)
     }
 
-    // @Get('comments/:id')
-    // async getComments(@Param('id') id:string, @Request() req) : Promise<CommentEntity>{
-    //     return await this.postService.getComments(id)
-    // }
+    @Get('comments/:id')
+    async getComments(@Param('id') id:string, @Request() req) : Promise<Partial<CommentEntity>[]>{
+        return await this.postService.getComments(+id, req.user.id)
+    }
 
     @Get('likes/:id')
     async getLikes(@Param('id') id:number, @Request() req) : Promise<Partial<UserEntity>[]>{
