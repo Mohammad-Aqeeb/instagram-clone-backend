@@ -6,7 +6,7 @@ import { CommentEntity } from './entity/comment.entity';
 import { PostLikeEntity } from './entity/postLike.entity';
 import { UserEntity } from '../user/entity/user.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CreatePostDTO, UpdatePostDTO } from './dto/post.dto';
+import { CreateCommentDTO, CreatePostDTO, UpdatePostDTO } from './dto/post.dto';
 import { PostReportTypes } from './entity/report.entity';
 
 @Controller('posts')
@@ -63,9 +63,20 @@ export class PostsController {
     async reportPost(@Param('id') id:number, @Body('reasonID') reasonID: PostReportTypes, @Request() req){
         return await this.postService.reportPost(+id,reasonID, req.user.id);
     }
+
     @Post('/share/:id')
     async share(@Param('id') id : number, @Request() req) : Promise<void>{
         return this.share(+id, req.user.id);
+    }
+
+    @Post('like/:id')
+    async toggleLike(@Param('id') id:number, @Request() req){
+        return this.postService.toggleLike(+id, req.user.id)
+    }
+
+    @Post('comment')
+    async createComment(@Body() payload : CreateCommentDTO, @Request() req){
+        return this.postService.createComment(payload, req.user.id);
     }
 
     @Delete('comment/:id')
