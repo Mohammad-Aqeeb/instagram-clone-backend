@@ -99,6 +99,10 @@ export class PostsService {
         )
     }
 
+    async getIsUserLikedPost(user: UserEntity, post: PostEntity): Promise<boolean> {
+        return Boolean(await this.postLikeRepository.findOne({ where: { user, post }, relations: ['user', 'post'] }));
+    }
+
     async getTags(search : string) : Promise<TagEntity[]>{
         return await this.tagRepository.createQueryBuilder('tag')
             .select('tag')
