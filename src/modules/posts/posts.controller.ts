@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Request, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { PostEntity } from './entity/post.entity';
 import { TagEntity } from './entity/tag.entity';
@@ -6,7 +6,8 @@ import { CommentEntity } from './entity/comment.entity';
 import { PostLikeEntity } from './entity/postLike.entity';
 import { UserEntity } from '../user/entity/user.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CreatePostDTO } from './dto/post.dto';
+import { CreatePostDTO, UpdatePostDTO } from './dto/post.dto';
+import { PostReportTypes } from './entity/report.entity';
 
 @Controller('posts')
 export class PostsController {
@@ -46,5 +47,29 @@ export class PostsController {
         @Request() req
     ) : Promise<PostEntity>{
         return this.postService.createPost(file, payload, req.user.id)
+    }
+
+    @Patch(':id')
+    async updatePost(@Param('id') id : number, @Body() payload : Partial<UpdatePostDTO>) : Promise<PostEntity>{
+        return this.postService.updatePost(+id , payload);
+    }
+
+    @Delete(':id')
+    async deletePost(@Param('id') id : number) : Promise<void>{
+        return await this.postService.deletePost(+id);
+    }
+
+    @Post('report/:id')
+    async reportPost(@Param('id') id:number, @Body('reasonID') reasonID: PostReportTypes, @Request() req){
+        return await this.postService.reportPost(+id,reasonID, req.user.id);
+    }
+    @Post('/share/:id')
+    async share(@Param('id') id : number, @Request() req) : Promise<void>{
+        return this.share(+id, req.user.id);
+    }
+
+    @Delete('comment/:id')
+    async deleteComment(@Param('id') id : number) : Promise<void>{
+        return this.postService.deleteComment(+id)
     }
 }
