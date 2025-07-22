@@ -5,9 +5,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { TagEntity } from './entity/tag.entity';
 import { UserEntity } from '../user/entity/user.entity';
 import { UserService } from '../user/user.service';
-import { CreatePostDTO } from './dto/post.dto';
+import { CreatePostDTO, UpdatePostDTO } from './dto/post.dto';
 import { FilesService } from '../files/files.service';
 import { PostFeedEntity } from './entity/postFeed.entity';
+import { CommentEntity } from './entity/comment.entity';
+import { PostReportTypes, ReportEntity } from './entity/report.entity';
 
 @Injectable()
 export class PostsService {
@@ -16,6 +18,8 @@ export class PostsService {
         @InjectRepository(PostEntity) private postRepository : Repository<PostEntity>,
         @InjectRepository(TagEntity) private tagRepository : Repository<TagEntity>,
         @InjectRepository(PostFeedEntity) private postFeedRepository : Repository<PostFeedEntity>,
+        @InjectRepository(CommentEntity) private commentRepository : Repository<CommentEntity>,
+        @InjectRepository(ReportEntity) private reportRepository : Repository<ReportEntity>,
 
         @Inject(forwardRef(() => UserService))
         private readonly userService : UserService,
@@ -117,6 +121,16 @@ export class PostsService {
                         user : follower,
                         post : savedPost
                     })
+                    // const feedCount = await this.postFeedRepository.count({ where: { user: follower.user } });
+                    // console.log('feedCount', feedCount);
+                    // const maxUserFeedNumber = 20;
+                    // if (feedCount > maxUserFeedNumber) {
+                    //     const oldestPost = await this.postFeed.findOne({
+                    //     where: { user: following.user },
+                    //     order: { createdAt: 'ASC' },
+                    //     });
+                    //     await this.postFeed.delete(oldestPost.id);
+                    // }
                 })
             )
         }
@@ -126,7 +140,80 @@ export class PostsService {
         return post
     }
 
+    async updatePost(id : number, payload : Partial<UpdatePostDTO>) : Promise<PostEntity>{
+        const post = await this.postRepository.findOneOrFail({where : {id}});
+        if(payload.tags){
+            try{
+                const parsedTag = JSON.parse(payload.tags);
+                const formattedTag = await Promise.all(
+                    parsedTag.map(async (tag)=>{
+                        const dbTag = await this.tagRepository.findOne({where : {name : tag}});
+                        if(!dbTag){
+                            return await this.tagRepository.save({
+                                name : tag,
+                                post : id
+                            })
+                        }
+                        return dbTag
+                    })
+                )
+
+                const formattedPost = {
+                    ...payload,
+                    tags : formattedTag
+                }
+
+                const updatePost = await this.postRepository.save({
+                    ...post ,
+                    ...formattedPost
+                })
+
+                return updatePost
+            }
+            catch(error){
+                console.log(error);
+                throw error;
+            }
+        }
+
+        else{
+            delete payload.tags;
+            Object.assign(post, payload);
+            const updatedPost = this.postRepository.save(post);
+            return updatedPost;
+        }
+    }
+
     async deletePost(id : number) : Promise<void>{
-        this.postRepository.delete(id);
+        await this.postRepository.delete(id);
+    }
+
+    async reportPost(id :number, reason : PostReportTypes, userId : number){
+        const post = await this.postRepository.findOneOrFail({where : {id}});
+        const user = await this.userService.getByID(userId);
+
+        const existingReport = await this.reportRepository.findOne({
+            where: { reporter: { id: userId }, reported: { id } },
+        });
+
+        if (existingReport) {
+            throw new Error("You have already reported this post");
+        }
+
+        await this.reportRepository.save({
+            reporter : user,
+            reported : post,
+            reason
+        })
+    }
+
+    async share(id : number, userId : number) : Promise<void>{
+        console.log('share', id, userId);
+    }
+
+    
+
+    async deleteComment(id : number) : Promise<void>{
+        await this.commentRepository.delete(id)
     }
 }
