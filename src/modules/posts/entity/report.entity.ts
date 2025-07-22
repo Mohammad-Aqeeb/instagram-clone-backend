@@ -4,16 +4,16 @@ import { UserEntity } from "src/modules/user/entity/user.entity";
 import { BaseEntity } from "src/common/types/base.entity";
 
 
-export enum   PostReportTypes {
-  SPAM = 1,
-  NUDITY,
-  HATE,
-  BULLING,
-  AUTHOR_RIGHTS,
-  SUICIDE,
-  SCAM,
-  FALSE_INFORMATION,
-  DONT_LIKE,
+export enum PostReportTypes {
+  SPAM = 'SPAM',
+  NUDITY = 'NUDITY',
+  HATE = 'HATE',
+  BULLING = 'BULLING',
+  AUTHOR_RIGHTS = 'AUTHOR_RIGHTS',
+  SUICIDE = 'SUICIDE',
+  SCAM = 'SCAM',
+  FALSE_INFORMATION = 'FALSE_INFORMATION',
+  DONT_LIKE = 'DONT_LIKE',
 }
 
 @Entity()
@@ -25,6 +25,6 @@ export class ReportEntity extends BaseEntity{
     @ManyToOne(()=> UserEntity, (u)=> u.reportedPost)
     reporter : UserEntity;
 
-    @Column()
+    @Column({type : 'enum', enum : PostReportTypes})
     reason : PostReportTypes
 }
