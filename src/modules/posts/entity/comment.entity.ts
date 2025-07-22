@@ -30,7 +30,7 @@ export class CommentEntity extends BaseEntity{
     commentLikes : CommentLikeEntity[]
 
     @TreeParent()
-    parentComment: CommentEntity;
+    parentComment: CommentEntity | null;
     @TreeChildren()
     replies: CommentEntity[];
 }
