@@ -46,12 +46,12 @@ export class PostsController {
         @Body() payload : CreatePostDTO,
         @Request() req
     ) : Promise<PostEntity>{
-        return this.postService.createPost(file, payload, req.user.id)
+        return await this.postService.createPost(file, payload, req.user.id)
     }
 
     @Patch(':id')
     async updatePost(@Param('id') id : number, @Body() payload : Partial<UpdatePostDTO>) : Promise<PostEntity>{
-        return this.postService.updatePost(+id , payload);
+        return await this.postService.updatePost(+id , payload);
     }
 
     @Delete(':id')
@@ -66,21 +66,31 @@ export class PostsController {
 
     @Post('/share/:id')
     async share(@Param('id') id : number, @Request() req) : Promise<void>{
-        return this.share(+id, req.user.id);
+        return await this.share(+id, req.user.id);
     }
 
     @Post('like/:id')
     async toggleLike(@Param('id') id:number, @Request() req){
-        return this.postService.toggleLike(+id, req.user.id)
+        return await this.postService.toggleLike(+id, req.user.id)
     }
 
     @Post('comment')
     async createComment(@Body() payload : CreateCommentDTO, @Request() req){
-        return this.postService.createComment(payload, req.user.id);
+        return await this.postService.createComment(payload, req.user.id);
+    }
+
+    @Patch('comment/:id')
+    async updateComment(@Param('id') id : number, @Body('text') text:string){
+        return await this.postService.updateComment(+id, text);
     }
 
     @Delete('comment/:id')
     async deleteComment(@Param('id') id : number) : Promise<void>{
-        return this.postService.deleteComment(+id)
+        return await this.postService.deleteComment(+id)
+    }
+
+    @Post('comment/like/:id')
+    async toggleCommentLike(@Param('id')  id : number, @Request() req){
+        return await this.postService.toggleCommentLike(+id, req.user.id);
     }
 }
