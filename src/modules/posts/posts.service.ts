@@ -11,6 +11,7 @@ import { PostFeedEntity } from './entity/postFeed.entity';
 import { CommentEntity } from './entity/comment.entity';
 import { PostReportTypes, ReportEntity } from './entity/report.entity';
 import { PostLikeEntity } from './entity/postLike.entity';
+import { CommentLikeEntity } from './entity/commentLike.entity';
 
 @Injectable()
 export class PostsService {
@@ -22,38 +23,18 @@ export class PostsService {
         @InjectRepository(CommentEntity) private commentRepository : Repository<CommentEntity>,
         @InjectRepository(ReportEntity) private reportRepository : Repository<ReportEntity>,
         @InjectRepository(PostLikeEntity) private postLikeRepository : Repository<PostLikeEntity>,
+        @InjectRepository(CommentLikeEntity) private commentLikeRepository : Repository<CommentLikeEntity>,
 
         @Inject(forwardRef(() => UserService))
         private readonly userService : UserService,
         private readonly fileService : FilesService
     ){}
 
-    async getTags(search : string) : Promise<TagEntity[]>{
-        return await this.tagRepository.createQueryBuilder('tag')
-            .select('tag')
-            .from(TagEntity, 'tag')
-            .leftJoin('tag.posts', 'posts')
-            .addSelect('Count(posts)', 'count')
-            .where('tag.name ILIKE search' , {search : `%${search}%`})
-            .orderBy('count', 'DESC')
-            .groupBy('tag.id')
-            .take(20)
-            .getMany();
-    }
-
     async getPostById(id : number) : Promise<PostEntity>{
         return await this.postRepository.findOneOrFail({
             where : {id},
             relations : ['user', 'tag']
         })
-    }
-
-    async getTagById(id : number) : Promise<TagEntity>{
-        return await this.tagRepository.createQueryBuilder('tag')
-            .where('tag.id =: id', {id})
-            .leftJoinAndSelect('tag.post', 'post')
-            .loadRelationCountAndMap('tag.postsNumber', 'tag.posts')
-            .getOneOrFail();
     }
 
     async getLikes(id : number, currentUserID : number): Promise<Partial<UserEntity>[]>{
@@ -70,6 +51,27 @@ export class PostsService {
                 }
             })
         )
+    }
+
+    async getTags(search : string) : Promise<TagEntity[]>{
+        return await this.tagRepository.createQueryBuilder('tag')
+            .select('tag')
+            .from(TagEntity, 'tag')
+            .leftJoin('tag.posts', 'posts')
+            .addSelect('Count(posts)', 'count')
+            .where('tag.name ILIKE search' , {search : `%${search}%`})
+            .orderBy('count', 'DESC')
+            .groupBy('tag.id')
+            .take(20)
+            .getMany();
+    }
+
+    async getTagById(id : number) : Promise<TagEntity>{
+        return await this.tagRepository.createQueryBuilder('tag')
+            .where('tag.id =: id', {id})
+            .leftJoinAndSelect('tag.post', 'post')
+            .loadRelationCountAndMap('tag.postsNumber', 'tag.posts')
+            .getOneOrFail();
     }
 
     async getTagByName(name : string) : Promise<TagEntity>{
@@ -122,16 +124,16 @@ export class PostsService {
                         user : follower,
                         post : savedPost
                     })
-                    // const feedCount = await this.postFeedRepository.count({ where: { user: follower.user } });
-                    // console.log('feedCount', feedCount);
-                    // const maxUserFeedNumber = 20;
-                    // if (feedCount > maxUserFeedNumber) {
-                    //     const oldestPost = await this.postFeed.findOne({
-                    //     where: { user: following.user },
-                    //     order: { createdAt: 'ASC' },
-                    //     });
-                    //     await this.postFeed.delete(oldestPost.id);
-                    // }
+                    const feedCount = await this.postFeedRepository.count({ where: { user: follower.user } });
+                    console.log('feedCount', feedCount);
+                    const maxUserFeedNumber = 20;
+                    if (feedCount > maxUserFeedNumber) {
+                        const oldestPost = await this.postFeedRepository.findOneOrFail({
+                        where: { user: follower.user },
+                        order: { createdAt: 'ASC' },
+                        });
+                        await this.postFeedRepository.delete(oldestPost.id);
+                    }
                 })
             )
         }
@@ -255,7 +257,41 @@ export class PostsService {
         return newComment
     }
 
+    async updateComment(id : number, text : string) : Promise<CommentEntity>{
+        const comment = await this.commentRepository.findOneOrFail({where : {id}, relations : ['post']});
+        const newComment = await this.commentRepository.save({
+            ...comment,
+            text
+        })
+        return newComment;
+    }
+
     async deleteComment(id : number) : Promise<void>{
         await this.commentRepository.delete(id)
+    }
+
+    async toggleCommentLike(id : number, userId : number){
+        const CommentLike = await this.commentLikeRepository.createQueryBuilder('like')
+            .where('like.comment.id =: id ', {id})
+            .andWhere('like.user := userId', {userId})
+            .getOne();
+
+        if(CommentLike){
+            await this.commentLikeRepository.delete(CommentLike.id);
+            // await this.notificationsService.deleteByPostID(post.id, currentUserID);
+        }
+        else{
+            await this.commentLikeRepository.save({
+                comment : {id},
+                user : {id : userId}
+            })
+            // await this.notificationsService.create({
+            //     type: NotificationTypes.LIKED_COMMENT,
+            //     receiverUserID: author.id,
+            //     initiatorUserID: currentUserID,
+            //     postID: post.id,
+            //     commentID,
+            // });
+        }
     }
 }
