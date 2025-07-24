@@ -12,6 +12,7 @@ import { CommentEntity } from "src/modules/posts/entity/comment.entity";
 import { CommentLikeEntity } from "src/modules/posts/entity/commentLike.entity";
 import { ReportEntity } from "src/modules/posts/entity/report.entity";
 import { PostFeedEntity } from "src/modules/posts/entity/postFeed.entity";
+import { notificationEntity } from "src/modules/notifications/entity/notification.entity";
 
 @Entity()
 export class UserEntity extends BaseEntity{
@@ -144,4 +145,10 @@ export class UserEntity extends BaseEntity{
 
     })
     postfeed : PostFeedEntity[]
+
+    @OneToMany(()=>notificationEntity, (n)=> n.receivedUser, {
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+    })
+    notifications : notificationEntity[]
 }
