@@ -12,6 +12,7 @@ import { FilesService } from '../files/files.service';
 import { FileEntity } from '../files/entity/file.entity';
 import { PostsService } from '../posts/posts.service';
 import { PostEntity } from '../posts/entity/post.entity';
+import { notificationEntity } from '../notifications/entity/notification.entity';
 
 @Injectable()
 export class UserService {
@@ -176,6 +177,20 @@ export class UserService {
             twoFactorSecret : secret
         })
         return true;
+    }
+
+    async getNotifications(id : number) : Promise<notificationEntity[]>{
+        const user = await this.userRepository.createQueryBuilder('user')
+            .where('user.id = :id', {id})
+            .leftJoinAndSelect('user.notification', 'notification')
+            .leftJoinAndSelect('notification.post', 'post')
+            .leftJoinAndSelect('post.file', 'file')
+            .leftJoinAndSelect('notification.initiatorUser', 'initiatorUser')
+            .leftJoinAndSelect('initiatorUser.avatar', 'avatar')
+            .orderBy('notification.createdAt', 'DESC')
+            .getOneOrFail()
+
+        return user?.notifications;
     }
 
     async isUsernamTaken(username : string) : Promise<boolean>{
