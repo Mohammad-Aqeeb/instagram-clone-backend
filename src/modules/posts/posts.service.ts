@@ -12,6 +12,7 @@ import { CommentEntity } from './entity/comment.entity';
 import { PostReportTypes, ReportEntity } from './entity/report.entity';
 import { PostLikeEntity } from './entity/postLike.entity';
 import { CommentLikeEntity } from './entity/commentLike.entity';
+import { IPaginationOptions, paginate, Pagination } from 'nestjs-typeorm-paginate';
 
 @Injectable()
 export class PostsService {
@@ -25,12 +26,110 @@ export class PostsService {
         @InjectRepository(PostLikeEntity) private postLikeRepository : Repository<PostLikeEntity>,
         @InjectRepository(CommentLikeEntity) private commentLikeRepository : Repository<CommentLikeEntity>,
 
-        @Inject(forwardRef(() => UserService))
-        private readonly userService : UserService,
+        @Inject(forwardRef(() => UserService)) private readonly userService : UserService,
         private readonly fileService : FilesService,
 
         private dataSource : DataSource
     ){}
+
+    async getAll(options :IPaginationOptions = {page : 1, limit : 10}, tag = '', userId : number) : Promise<Pagination<PostEntity>>{
+        
+        const user = await this.userService.getByID(userId);
+        if(!tag){
+            const userFeed = await this.postFeedRepository.createQueryBuilder('feed')
+                .where('feed.user = :userId', {userId})
+                .leftJoinAndSelect('feed.post', 'post')
+                .leftJoinAndSelect('post.avatar', 'avatar')
+                .leftJoinAndSelect('post.file', 'file')
+                .leftJoinAndSelect('post.tag', 'tag')
+                .orderBy('post.createdAt', 'DESC')
+                .take(Number(options.limit))
+                .skip((Number(options.page) - 1) * Number(options.limit))
+                .getMany()
+            
+            const feedPost = userFeed.map((f)=> f.post);
+            
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const userLatesPost = await this.postRepository.createQueryBuilder('post')
+                .where('post.user = :userId', {userId})
+                .andWhere('post.createdAt > :yesterday', {yesterday})
+                .leftJoinAndSelect('post.user', 'user')
+                .leftJoinAndSelect('user.avatar', 'avatar')
+                .leftJoinAndSelect('post.file', 'file')
+                .leftJoinAndSelect('post.tags', 'tag')
+                .orderBy('post.createdAt', 'DESC')
+                .take(5)
+                .getMany()
+        
+            const allPost = [...userLatesPost, ...feedPost];
+
+            const formattedFeedPost = await Promise.all(
+                allPost.map(async (p)=> await this.formatFeedPost(p, user, tag))
+            );
+
+            if(formattedFeedPost.length){
+                return {
+                    items : formattedFeedPost,
+                    meta : {
+                        currentPage : Number(options.page),
+                        itemCount : formattedFeedPost.length,
+                        itemsPerPage : Number(options.limit),
+                        totalItem : 50,
+                        totalPage : 10
+                    }
+                }
+            }
+        }
+
+        const queryBuilder = this.postRepository.createQueryBuilder('post')
+            .leftJoin('post.like', 'like')
+            .leftJoin('post.comment', 'comment')
+            .select('Count(like) + Count(comment)*5 /(EXTRACT(EPOCH FROM NOW()) - EXTRACT(EPOCH FROM post.createdAt)))', 'count')
+            .leftJoinAndSelect('post.author', 'author')
+            .leftJoinAndSelect('author.avatar', 'avatar')
+            .leftJoinAndSelect('post.file', 'file')
+            .leftJoinAndSelect('post.tags', 'tags')
+            .orderBy('score', 'DESC')
+            .groupBy('post.id')
+            .addGroupBy('author.id')
+            .addGroupBy('avatar.id')
+            .addGroupBy('file.id')
+            .addGroupBy('tags.id');
+
+            if(tag) queryBuilder.where('tags.name IN :tag', { tag });
+            else {
+            const postsFeed = await this.postFeedRepository
+                .createQueryBuilder('feed')
+                .select('feed.id')
+                .where('feed.user.id = :userID', { userId })
+                .getMany();
+            const postsFeedIDs = postsFeed.map((pf) => pf.id);
+
+            if (postsFeedIDs.length) queryBuilder.where('post.id NOT IN (:...postsFeedIDs)', { postsFeedIDs });
+            }
+
+            const { items, meta } = await paginate<PostEntity>(queryBuilder, options);
+
+            const formattedPosts = (await Promise.all(
+            items.map(async (p) => this.formatFeedPost(p, user, tag))
+            )) as PostEntity[];
+            return { items: formattedPosts, meta };
+    }
+
+    async formatFeedPost(post : PostEntity, user : UserEntity, tag : string) : Promise<PostEntity>{
+        return {
+            ...post,
+            user : {
+                ...post.user,
+                isViewerFolled : post.user.id === user.id ? false : await this.userService.getIsUserFollowed( user.id, post.user.id)
+            }  as unknown as UserEntity,
+            comment : tag ? [] : await this.commentRepository.find({where : {post}, order : {createdAt : 'DESC'}, take : 2}),
+            isViewerLiked : await this.getIsUserLikedPost(user,post),
+            isPostSaved : false,
+            isViewerInPhoto: false,
+        } as unknown as PostEntity
+    }
 
     async getPostById(id : number) : Promise<PostEntity>{
         return await this.postRepository.findOneOrFail({
@@ -100,10 +199,13 @@ export class PostsService {
     }
 
     async getLikedPostsByUserID(id: number): Promise<PostEntity[]> {
-        const likes = await this.postLikeRepository.createQueryBuilder('likes').where('user.id = :id', { id }).getMany();
+        const likes = await this.postLikeRepository.createQueryBuilder('likes')
+            .where('user.id = :id', { id })
+            .leftJoinAndSelect('likes.post', 'post')
+            .getMany();
         return likes.map((l) => l.post);
     }
-    
+
     async getIsUserLikedPost(user: UserEntity, post: PostEntity): Promise<boolean> {
         return Boolean(await this.postLikeRepository.findOne({ where: { user, post }, relations: ['user', 'post'] }));
     }
