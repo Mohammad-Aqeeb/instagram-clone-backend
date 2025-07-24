@@ -8,11 +8,22 @@ import { UserEntity } from '../user/entity/user.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateCommentDTO, CreatePostDTO, UpdatePostDTO } from './dto/post.dto';
 import { PostReportTypes } from './entity/report.entity';
+import { Pagination } from 'nestjs-typeorm-paginate';
 
 @Controller('posts')
 export class PostsController {
 
     constructor(private readonly postService : PostsService){}
+
+    @Get()
+    async getAll(
+        @Query('page') page: number,
+        @Query('limit') limit: number,
+        @Query('tab') tab = '',
+        @Request() req
+    ): Promise<Pagination<PostEntity>>{
+        return await this.postService.getAll({ page, limit }, tab, req.user.id);
+    }
 
     @Get('tags')
     async getTags(@Query('search') search : string) : Promise<TagEntity[]>{
