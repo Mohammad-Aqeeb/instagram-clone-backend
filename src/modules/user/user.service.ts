@@ -11,6 +11,7 @@ import { take } from 'rxjs';
 import { FilesService } from '../files/files.service';
 import { FileEntity } from '../files/entity/file.entity';
 import { PostsService } from '../posts/posts.service';
+import { PostEntity } from '../posts/entity/post.entity';
 
 @Injectable()
 export class UserService {
@@ -27,8 +28,28 @@ export class UserService {
         private readonly fileService : FilesService
     ){}
 
-    async setUpdateRefreshToken(id :number, hashedRefreshtoken : string){
-        this.userRepository.update(id, {hashedRefreshtoken})
+    async getAll(search : string, id : number) : Promise<UserEntity[]>{
+        if(search.trim().length === 0){
+            return await this.userRepository.find({
+                where : {
+                    id : Not(id)
+                },
+                take : 10
+            });
+        }
+
+        const users = await this.userRepository.createQueryBuilder('user_entity')
+            .select()
+            .where('user_entity.username ILIKE :search', {search : `%${search}%`})
+            .orWhere('user_entity.name ILIKE :search', {search : `%${search}%`})
+            .orWhere('user_entity.email ILIKE :search', {search : `%${search}%`})
+            .getMany()
+
+
+        const currentUserIndexInSearchResult = users.findIndex((u) => u.id === id);
+        if (currentUserIndexInSearchResult !== -1) users.splice(currentUserIndexInSearchResult, 1);
+
+        return users;
     }
 
     async getByID(id: number, options: FindOneOptions<UserEntity> = {}): Promise<UserEntity> {
@@ -45,6 +66,10 @@ export class UserService {
             throw new HttpException("USER_NOT_FOUND", HttpStatus.NOT_FOUND);
         }
         return user
+    }
+
+    async setUpdateRefreshToken(id :number, hashedRefreshtoken : string){
+        this.userRepository.update(id, {hashedRefreshtoken})
     }
 
     async createUser(payload : CreateUserDTO): Promise<UserEntity>{
@@ -111,11 +136,32 @@ export class UserService {
     }
 
     async getProfileByUsername(username : string, id : number) : Promise<UserEntity>{
+        const viwer = await this.getByID(id);
         const user = await this.userRepository.createQueryBuilder('user')
-            .where('user.username = :username', {username})
+            .where('user.username = :username', { username })
+            .leftJoinAndSelect('user.avatar', 'avatar')
+            .leftJoinAndSelect('user.posts', 'posts')
+            .leftJoinAndSelect('posts.file', 'file')
+            .leftJoinAndSelect('posts.tags', 'tags')
+            .leftJoinAndSelect('posts.likes', 'likes')
+            .orderBy('posts.createdAt', 'DESC')
             .getOneOrFail()
 
-        return user;
+
+        user.posts = await Promise.all (
+            user.posts.map(async (p)=>{
+                return {
+                    ...p,
+                    isViewerLiked : await this.postService.getIsUserLikedPost(viwer, p)
+                }  as unknown as PostEntity
+            })
+        )
+
+        return {
+            user,
+            isViewerBlocked : false,
+            isviewerFollowed : await this.getIsUserFollowed(id, user.id)
+        } as unknown as UserEntity;
     }
 
     async enable2FA(id : number) : Promise<boolean>{
@@ -146,29 +192,15 @@ export class UserService {
         return false
     }
 
-    async getAll(search : string, id : number) : Promise<UserEntity[]>{
-        if(search.trim().length === 0){
-            return await this.userRepository.find({
-                where : {
-                    id : Not(id)
-                },
-                take : 10
-            });
-        }
-
-        const users = await this.userRepository.createQueryBuilder('user_entity')
-            .select()
-            .where('user_entity.username ILIKE :search', {search : `%${search}%`})
-            .orWhere('user_entity.name ILIKE :search', {search : `%${search}%`})
-            .orWhere('user_entity.email ILIKE :search', {search : `%${search}%`})
-            .getMany()
-
-
-        const currentUserIndexInSearchResult = users.findIndex((u) => u.id === id);
-        if (currentUserIndexInSearchResult !== -1) users.splice(currentUserIndexInSearchResult, 1);
-
-        return users;
+    async confirmEmail(email : string){
+        const user = this.userRepository.find({where : {email}});
+        await this.userRepository.save({
+            ...user,
+            isEmailConfirmed : true
+        })
+        return true
     }
+
 
     async followUser(id : number, userId : number) : Promise<void>{
         const user = await this.userRepository.findOneOrFail({where : {id : userId}});
@@ -235,12 +267,10 @@ export class UserService {
     }
 
     async addRecentSearch(id : number, type : 'user'| 'tag', userId : number) : Promise<RecentSearchEntity>{
-
         const user = await this.userRepository.findOneOrFail({
             where: { id: userId },
             relations : ['recentSearch']
         });
-
         const index = user.recentSearch.findIndex((r)=>{
             return r.id === id && r.type === type
         })
