@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { PostEntity } from './entity/post.entity';
-import { DataSource, getManager, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TagEntity } from './entity/tag.entity';
 import { UserEntity } from '../user/entity/user.entity';
@@ -46,9 +46,9 @@ export class PostsService {
                 .take(Number(options.limit))
                 .skip((Number(options.page) - 1) * Number(options.limit))
                 .getMany()
-            
+
             const feedPost = userFeed.map((f)=> f.post);
-            
+
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             const userLatesPost = await this.postRepository.createQueryBuilder('post')
@@ -61,7 +61,7 @@ export class PostsService {
                 .orderBy('post.createdAt', 'DESC')
                 .take(5)
                 .getMany()
-        
+
             const allPost = [...userLatesPost, ...feedPost];
 
             const formattedFeedPost = await Promise.all(
