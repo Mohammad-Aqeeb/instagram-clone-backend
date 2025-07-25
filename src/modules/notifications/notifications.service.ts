@@ -4,6 +4,7 @@ import { NotificationEntity } from './entity/notification.entity';
 import { Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { createNotificationDto } from './dto/notification.dto';
+import { PostEntity } from '../posts/entity/post.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -47,6 +48,24 @@ export class NotificationsService {
 
     async delete(notificationId : number) : Promise<void>{
         await this.notificationRepository.delete(notificationId);
+    }
+
+    async deleteByPostID(postId : number, userId : number){
+        const notification = await this.notificationRepository.createQueryBuilder('notification')
+            .where('notification.post.id = :postID' , {postId})
+            .andWhere('notification.initiatorUser.id = :userId', {userId})
+            .getOneOrFail();
+
+        if(notification) await this.notificationRepository.delete(notification.id);
+    }
+
+    async deleteByCommentId(CommentId : number, userId : number){
+        const notification = await this.notificationRepository.createQueryBuilder('notification')
+            .where('notification.CommentId.id = :CommentId' , {CommentId})
+            .andWhere('notification.initiatorUser.id = :userId', {userId})
+            .getOneOrFail();
+
+        if(notification) await this.notificationRepository.delete(notification.id);
     }
 
     async deleteLastByInitiatorID(userId : number, targetId : number){
