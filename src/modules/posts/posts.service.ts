@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PostEntity } from './entity/post.entity';
 import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,6 +13,8 @@ import { PostReportTypes, ReportEntity } from './entity/report.entity';
 import { PostLikeEntity } from './entity/postLike.entity';
 import { CommentLikeEntity } from './entity/commentLike.entity';
 import { IPaginationOptions, paginate, Pagination } from 'nestjs-typeorm-paginate';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/entity/notification.entity';
 
 @Injectable()
 export class PostsService {
@@ -29,6 +31,7 @@ export class PostsService {
         @Inject(forwardRef(() => UserService)) private readonly userService : UserService,
         private readonly fileService : FilesService,
 
+        private readonly notificationsService : NotificationsService,
         private dataSource : DataSource
     ){}
 
@@ -372,29 +375,31 @@ export class PostsService {
     }
 
     async toggleLike(id : number, userId : number){
+        const userWhoLiked = await this.userService.getByID(userId);
+        const post = await this.postRepository.findOneOrFail({where : {id}, relations : ['user']});
+
         const like = await this.postLikeRepository.createQueryBuilder('like')
             .where('like.post.id =: id', {id})
             .andWhere('like.user.id =: userId', {userId})
             .getOne();
 
-        const post = await this.postRepository.findOneOrFail({where : {id}, relations : ['user']});
         const likedPostUser = post.user;
 
         if(like){
             await this.postLikeRepository.delete(like.id);
-            // await this.notificationsService.deleteByPostID(postID, currentUserID);
+            await this.notificationsService.deleteByPostID(post.id, userId);
         }
         else{
-            const newPostLike = await this.postLikeRepository.save({
+            await this.postLikeRepository.save({
                 post : {id},
                 user : {id : userId}
             })
-            // await this.notificationsService.create({
-            //     type: NotificationTypes.LIKED_PHOTO,
-            //     receiverUserID: author.id,
-            //     initiatorUserID: currentUserID,
-            //     postID,
-            // });
+            await this.notificationsService.createNotification({
+                notificationType: NotificationType.LIKED_PHOTO,
+                receivedUser: likedPostUser,
+                initiatorUser: userWhoLiked,
+                post,
+            })
         }
     }
 
@@ -428,27 +433,31 @@ export class PostsService {
     }
 
     async toggleCommentLike(id : number, userId : number){
+        const user = await this.userService.getByID(userId);
         const CommentLike = await this.commentLikeRepository.createQueryBuilder('like')
             .where('like.comment.id =: id ', {id})
             .andWhere('like.user =: userId', {userId})
             .getOne();
 
+        if(!CommentLike){
+            throw new NotFoundException('Comment not found')
+        }
+
         if(CommentLike){
             await this.commentLikeRepository.delete(CommentLike.id);
-            // await this.notificationsService.deleteByPostID(post.id, currentUserID);
+            await this.notificationsService.deleteByPostID(CommentLike.id, userId);
         }
         else{
-            await this.commentLikeRepository.save({
+            const commentLike = await this.commentLikeRepository.save({
                 comment : {id},
                 user : {id : userId}
             })
-            // await this.notificationsService.create({
-            //     type: NotificationTypes.LIKED_COMMENT,
-            //     receiverUserID: author.id,
-            //     initiatorUserID: currentUserID,
-            //     postID: post.id,
-            //     commentID,
-            // });
+            await this.notificationsService.createNotification({
+                notificationType: NotificationType.LIKED_COMMENT,
+                receivedUser: commentLike.comment.user,
+                initiatorUser: user,
+                comment : commentLike.comment,
+            });
         }
     }
 }
