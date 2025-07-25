@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { forwardRef, HttpException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOneOptions, Not, Repository } from 'typeorm';
 
@@ -6,13 +6,12 @@ import { UserEntity } from './entity/user.entity';
 import { CreateUserDTO, UpdateUserDTO, UserValidationDTO } from './dto/user.dto';
 import { FollowingEntity } from './entity/following.entity';
 import { RecentSearchEntity } from './entity/recentSearch.entity';
-import { TagEntity } from '../posts/entity/tag.entity';
-import { take } from 'rxjs';
 import { FilesService } from '../files/files.service';
 import { FileEntity } from '../files/entity/file.entity';
 import { PostsService } from '../posts/posts.service';
 import { PostEntity } from '../posts/entity/post.entity';
-import { notificationEntity } from '../notifications/entity/notification.entity';
+import { NotificationEntity, NotificationType } from '../notifications/entity/notification.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class UserService {
@@ -24,6 +23,9 @@ export class UserService {
         private readonly userFollowingsRepository: Repository<FollowingEntity>,
         @InjectRepository(RecentSearchEntity)
         private readonly recentSearchRepository: Repository<RecentSearchEntity>,
+
+        @Inject(forwardRef(()=> NotificationsService))
+        private notificationService : NotificationsService,
 
         private readonly postService : PostsService,
         private readonly fileService : FilesService
@@ -179,7 +181,7 @@ export class UserService {
         return true;
     }
 
-    async getNotifications(id : number) : Promise<notificationEntity[]>{
+    async getNotifications(id : number) : Promise<NotificationEntity[]>{
         const user = await this.userRepository.createQueryBuilder('user')
             .where('user.id = :id', {id})
             .leftJoinAndSelect('user.notification', 'notification')
@@ -225,11 +227,11 @@ export class UserService {
             user,
             target
         })
-        // await this.notificationsService.create({
-        //     type: NotificationTypes.FOLLOWED,
-        //     receiverUserID: targetID,
-        //     initiatorUserID: currentUserID,
-        // });
+        await this.notificationService.createNotification({
+            notificationType: NotificationType.FOLLOW,
+            initiatorUser: user,
+            receivedUser: target
+        })
     }
 
     async unfollowUser(id : number, userId : number): Promise<void>{
@@ -237,7 +239,7 @@ export class UserService {
 
         if(follow){
             await this.userFollowingsRepository.delete(follow.id);
-            // await this.notificationsService.deleteLastByInitiatorID(userID, targetID);
+            await this.notificationService.deleteLastByInitiatorID(userId, id);
         }
     }
 
