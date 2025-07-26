@@ -27,7 +27,8 @@ export class UserService {
         @Inject(forwardRef(()=> NotificationsService))
         private notificationService : NotificationsService,
 
-        private readonly postService : PostsService,
+        @Inject(forwardRef(()=> PostsService))
+        private postService : PostsService,
         private readonly fileService : FilesService
     ){}
 
