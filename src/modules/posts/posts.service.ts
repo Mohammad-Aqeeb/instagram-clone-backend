@@ -36,7 +36,6 @@ export class PostsService {
     ){}
 
     async getAll(options :IPaginationOptions = {page : 1, limit : 10}, tag = '', userId : number) : Promise<Pagination<PostEntity>>{
-        
         const user = await this.userService.getByID(userId);
         if(!tag){
             const userFeed = await this.postFeedRepository.createQueryBuilder('feed')
