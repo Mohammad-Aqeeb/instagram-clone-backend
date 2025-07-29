@@ -11,11 +11,13 @@ import { TagEntity } from './entity/tag.entity';
 import { UserModule } from '../user/user.module';
 import { FilesModule } from '../files/files.module';
 import { PostFeedEntity } from './entity/postFeed.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports : [
     TypeOrmModule.forFeature([PostEntity, PostLikeEntity, CommentEntity, CommentLikeEntity, ReportEntity, TagEntity, PostFeedEntity]),
     FilesModule,
+    NotificationsModule,
     forwardRef(() => UserModule),
   ],
   providers: [PostsService],
