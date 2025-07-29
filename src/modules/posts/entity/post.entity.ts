@@ -1,6 +1,6 @@
 import { BaseEntity } from "src/common/types/base.entity";
 import { UserEntity } from "src/modules/user/entity/user.entity";
-import { AfterLoad, Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne } from "typeorm";
+import { AfterLoad, Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne } from "typeorm";
 import { PostLikeEntity } from "./postLike.entity";
 import { CommentEntity } from "./comment.entity";
 import { FileEntity } from "src/modules/files/entity/file.entity";
@@ -24,18 +24,17 @@ export class PostEntity extends BaseEntity{
         eager : true
     })
     user : UserEntity
-   
+    
     @OneToMany(()=> PostLikeEntity, (p)=>p.post, {
+        eager: true,
         cascade : true
     })
     like : PostLikeEntity[];
-    likeNumber : number;
 
     @OneToMany(()=> CommentEntity, (c)=> c.post,{
         cascade : true
     })
     comment : CommentEntity[]
-    commentNumber : string
 
     @OneToMany(()=> ReportEntity, (r)=> r.reported, {
 
@@ -48,13 +47,8 @@ export class PostEntity extends BaseEntity{
     @OneToOne(()=> FileEntity,{
         cascade : true
     })
+    @JoinColumn()
     file : FileEntity;
-    fileUrl : string
-
-    @AfterLoad()
-    getFileUrl(){
-        this.fileUrl = this.file.url;
-    }
 
     @OneToMany(() => PostFeedEntity, (pf) => pf.post, {
         cascade: true,
