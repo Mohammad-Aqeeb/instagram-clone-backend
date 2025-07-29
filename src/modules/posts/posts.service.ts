@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { forwardRef, HttpException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PostEntity } from './entity/post.entity';
 import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -42,9 +42,11 @@ export class PostsService {
             const userFeed = await this.postFeedRepository.createQueryBuilder('feed')
                 .where('feed.user = :userId', {userId})
                 .leftJoinAndSelect('feed.post', 'post')
-                .leftJoinAndSelect('post.avatar', 'avatar')
+                .leftJoinAndSelect('post.user', 'user')
+                .leftJoinAndSelect('user.avatar', 'avatar')
                 .leftJoinAndSelect('post.file', 'file')
-                .leftJoinAndSelect('post.tag', 'tag')
+                .leftJoinAndSelect('post.tags', 'tags')
+                .leftJoinAndSelect('post.like', 'like')
                 .orderBy('post.createdAt', 'DESC')
                 .take(Number(options.limit))
                 .skip((Number(options.page) - 1) * Number(options.limit))
@@ -56,11 +58,12 @@ export class PostsService {
             yesterday.setDate(yesterday.getDate() - 1);
             const userLatesPost = await this.postRepository.createQueryBuilder('post')
                 .where('post.user = :userId', {userId})
-                .andWhere('post.createdAt > :yesterday', {yesterday})
+                // .andWhere('post.createdAt > :yesterday', {yesterday})
                 .leftJoinAndSelect('post.user', 'user')
                 .leftJoinAndSelect('user.avatar', 'avatar')
                 .leftJoinAndSelect('post.file', 'file')
                 .leftJoinAndSelect('post.tags', 'tag')
+                .leftJoinAndSelect('post.like', 'like')
                 .orderBy('post.createdAt', 'DESC')
                 .take(5)
                 .getMany()
@@ -72,6 +75,8 @@ export class PostsService {
             );
 
             if(formattedFeedPost.length){
+                console.log(formattedFeedPost);
+                
                 return {
                     items : formattedFeedPost,
                     meta : {
@@ -88,24 +93,27 @@ export class PostsService {
         const queryBuilder = this.postRepository.createQueryBuilder('post')
             .leftJoin('post.like', 'like')
             .leftJoin('post.comment', 'comment')
-            .select('Count(like) + Count(comment)*5 /(EXTRACT(EPOCH FROM NOW()) - EXTRACT(EPOCH FROM post.createdAt)))', 'count')
-            .leftJoinAndSelect('post.author', 'author')
-            .leftJoinAndSelect('author.avatar', 'avatar')
+            .addSelect(`COUNT(like.id) + COUNT(comment.id) * 5 / (EXTRACT(EPOCH FROM NOW()) - EXTRACT(EPOCH FROM post.createdAt))`, 'score')
+            .leftJoinAndSelect('post.user', 'user')
+            .leftJoinAndSelect('user.avatar', 'avatar')
             .leftJoinAndSelect('post.file', 'file')
             .leftJoinAndSelect('post.tags', 'tags')
+            .leftJoinAndSelect('post.like', 'like')
             .orderBy('score', 'DESC')
             .groupBy('post.id')
-            .addGroupBy('author.id')
+            .addGroupBy('user.id')
             .addGroupBy('avatar.id')
             .addGroupBy('file.id')
-            .addGroupBy('tags.id');
+            .addGroupBy('tags.id')
 
-            if(tag) queryBuilder.where('tags.name IN :tag', { tag });
+            if(tag) {
+                queryBuilder.where('tags.name IN :tag', { tag }); 
+            }
             else {
             const postsFeed = await this.postFeedRepository
                 .createQueryBuilder('feed')
                 .select('feed.id')
-                .where('feed.user.id = :userID', { userId })
+                .where('feed.user.id = :userId', { userId })
                 .getMany();
             const postsFeedIDs = postsFeed.map((pf) => pf.id);
 
@@ -137,7 +145,7 @@ export class PostsService {
     async getPostById(id : number) : Promise<PostEntity>{
         return await this.postRepository.findOneOrFail({
             where : {id},
-            relations : ['user', 'tag']
+            relations : ['user', 'tags','file']
         })
     }
 
@@ -215,11 +223,9 @@ export class PostsService {
 
     async getTags(search : string) : Promise<TagEntity[]>{
         return await this.tagRepository.createQueryBuilder('tag')
-            .select('tag')
-            .from(TagEntity, 'tag')
             .leftJoin('tag.posts', 'posts')
             .addSelect('Count(posts)', 'count')
-            .where('tag.name ILIKE search' , {search : `%${search}%`})
+            .where('tag.name ILIKE :search' , {search : `%${search}%`})
             .orderBy('count', 'DESC')
             .groupBy('tag.id')
             .take(20)
