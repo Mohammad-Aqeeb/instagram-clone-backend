@@ -4,67 +4,77 @@ import { FileEntity, uploadFileOption } from './entity/file.entity';
 import { Repository } from 'typeorm';
 import * as sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
-import { extname } from 'path';
-import { S3 } from 'aws-sdk';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class FilesService {
+  private supabase: SupabaseClient;
 
-    constructor(@InjectRepository(FileEntity) private fileEntity : Repository<FileEntity>){}
+  constructor(
+    @InjectRepository(FileEntity) private fileEntity: Repository<FileEntity>
+  ) {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    async uploadFile(options : uploadFileOption) : Promise<FileEntity>{
-        const validImageType = ['image/jpg', 'image/jpeg', 'image/png']
-        const validImageSize = 1024 * 1024 * options.imageMaxSizeMB;
-
-        const isInvalidType = !validImageType.includes(options.file.mimetype);
-        if(isInvalidType){
-            throw new HttpException('INVALID_FILE_TYPE', HttpStatus.UNPROCESSABLE_ENTITY)
-        }
-
-        if(options.file.size > validImageSize){
-            throw new HttpException('INVALID_FILE_SIZE', HttpStatus.UNPROCESSABLE_ENTITY)
-        }
-        
-        const fileBuffer = await sharp(options.file.buffer).webp({ quality: options.quality }).toBuffer();
-        const filename = uuidv4() + extname(options.file.originalname);
-
-        const Bucket = process.env.AWS_PUBLIC_S3_BUCKET_NAME;
-        if (!Bucket) {
-            throw new Error('AWS_PUBLIC_S3_BUCKET_NAME is not defined');
-        }
-
-        const ACL = 'public-read'
-
-        const s3 = new S3();
-        const uploadFile = await s3.upload({
-            Bucket,
-            ACL,
-            Body : fileBuffer,
-            Key : filename
-        }).promise();
-
-        const newFile = await this.fileEntity.save({
-            key : uploadFile.Key,
-            url : uploadFile.Location
-        })
-
-        return newFile;
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('SUPABASE env variables missing');
     }
 
-    async deleteFile(id : number) : Promise<void>{
-        const file = await this.fileEntity.findOneOrFail({where : {id}});
+    this.supabase = createClient(supabaseUrl, supabaseKey);
+  }
 
-        const Bucket = process.env.AWS_PUBLIC_S3_BUCKET_NAME;
-        if (!Bucket) {
-            throw new Error('AWS_PUBLIC_S3_BUCKET_NAME is not defined');
-        }
-
-        const s3 = new S3();
-        await s3.deleteObject({
-            Bucket,
-            Key : file?.key
-        }).promise()
-
-        await this.fileEntity.delete(id);
+  async uploadFile(options: uploadFileOption): Promise<FileEntity> {
+    const validImageType = ['image/jpg', 'image/jpeg', 'image/png'];
+    const validImageSize = 1024 * 1024 * options.imageMaxSizeMB;
+    
+    if (!validImageType.includes(options.file.mimetype)) {
+      throw new HttpException('INVALID_FILE_TYPE', HttpStatus.UNPROCESSABLE_ENTITY);
     }
+
+    if (options.file.size > validImageSize) {
+      throw new HttpException('INVALID_FILE_SIZE', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    const fileBuffer = await sharp(options.file.buffer)
+      .webp({ quality: options.quality })
+      .toBuffer();
+
+    const fileExt = '.webp';
+    const filename = `${uuidv4()}${fileExt}`;
+    const bucket = 'images';
+
+    const { data, error } = await this.supabase.storage
+      .from(bucket)
+      .upload(filename, fileBuffer, {
+        contentType: 'image/webp',
+        upsert: false,
+      });
+
+    if (error) {
+      throw new HttpException(`UPLOAD_FAILED: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    const { data: publicUrlData } = this.supabase
+      .storage
+      .from(bucket)
+      .getPublicUrl(data.path);
+
+    const newFile = this.fileEntity.create({
+      key: data.path,
+      url: publicUrlData.publicUrl,
+    });
+
+    return await this.fileEntity.save(newFile);
+  }
+
+  async deleteFile(id: number): Promise<void> {
+    const file = await this.fileEntity.findOneOrFail({ where: { id } });
+
+    const bucket = 'images';
+    await this.supabase.storage
+      .from(bucket)
+      .remove([file.key]);
+
+    await this.fileEntity.delete(id);
+  }
 }
