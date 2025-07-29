@@ -12,7 +12,6 @@ import { Pagination } from 'nestjs-typeorm-paginate';
 
 @Controller('posts')
 export class PostsController {
-
     constructor(private readonly postService : PostsService){}
 
     @Get()
