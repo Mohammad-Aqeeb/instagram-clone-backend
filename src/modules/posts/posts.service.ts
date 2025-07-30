@@ -74,8 +74,6 @@ export class PostsService {
             );
 
             if(formattedFeedPost.length){
-                console.log(formattedFeedPost);
-                
                 return {
                     items : formattedFeedPost,
                     meta : {
@@ -217,7 +215,11 @@ export class PostsService {
     }
 
     async getIsUserLikedPost(user: UserEntity, post: PostEntity): Promise<boolean> {
-        return Boolean(await this.postLikeRepository.findOne({ where: { user, post }, relations: ['user', 'post'] }));
+        return Boolean(await this.postLikeRepository.createQueryBuilder('like')
+            .where('like.user.id = :userId', {userId : user.id})
+            .where('like.post.id = :postId', {postId : post.id})
+            .getOne()
+        );
     }
 
     async getTags(search : string) : Promise<TagEntity[]>{
@@ -384,8 +386,8 @@ export class PostsService {
         const post = await this.postRepository.findOneOrFail({where : {id}, relations : ['user']});
 
         const like = await this.postLikeRepository.createQueryBuilder('like')
-            .where('like.post.id =: id', {id})
-            .andWhere('like.user.id =: userId', {userId})
+            .where('like.post.id = :id', {id})
+            .andWhere('like.user.id = :userId', {userId})
             .getOne();
 
         const likedPostUser = post.user;
