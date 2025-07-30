@@ -52,7 +52,7 @@ export class NotificationsService {
 
     async deleteByPostID(postId : number, userId : number){
         const notification = await this.notificationRepository.createQueryBuilder('notification')
-            .where('notification.post.id = :postID' , {postId})
+            .where('notification.post.id = :postId' , {postId})
             .andWhere('notification.initiatorUser.id = :userId', {userId})
             .getOneOrFail();
 
