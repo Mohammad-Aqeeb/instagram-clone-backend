@@ -100,7 +100,6 @@ export class UserEntity extends BaseEntity{
         onDelete : 'CASCADE'
     })
     posts : PostEntity[];
-    postsNumber?: number;
 
     @OneToMany(()=> ReportEntity, (r)=> ReportEntity)
     reportedPost : ReportEntity
