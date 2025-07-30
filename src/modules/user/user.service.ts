@@ -57,7 +57,14 @@ export class UserService {
     }
 
     async getByID(id: number, options: FindOneOptions<UserEntity> = {}): Promise<UserEntity> {
-        const user =  await this.userRepository.findOne({ where: { id }, ...options });
+        const user =  await this.userRepository.createQueryBuilder('user')
+            .where('user.id = :id', {id})
+            .leftJoinAndSelect('user.following', 'following')
+            .leftJoinAndSelect('user.follower', 'follower')
+            .leftJoinAndSelect('user.avatar', 'avatar')
+            .leftJoinAndSelect('user.posts', 'posts')
+            .leftJoinAndSelect('posts.file', 'file')
+            .getOneOrFail()
         if(!user){
             throw new HttpException("USER_NOT_FOUND", HttpStatus.NOT_FOUND);
         }
@@ -87,6 +94,7 @@ export class UserService {
 
     async updateUser(id : number, body : Partial<UpdateUserDTO>) : Promise<UserEntity>{
         const user = await this.userRepository.findOne({where : {id}});
+        body.phone = body.phone?.toString();
         if(!user){
             throw new NotFoundException("user not found");
         }
