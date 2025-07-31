@@ -78,7 +78,8 @@ export class UserEntity extends BaseEntity{
 
     @OneToOne(()=> FileEntity, {
         eager : true,
-        nullable : true
+        nullable : true,
+        onDelete: 'SET NULL'
     })
     @JoinColumn()
     avatar : FileEntity
@@ -128,13 +129,13 @@ export class UserEntity extends BaseEntity{
     })
     recentSearch : RecentSearchEntity[]
 
-    @OneToMany(()=> FollowingEntity, (f)=> f.user,{
+    @OneToMany(()=> FollowingEntity, (f)=> f.target,{
         onUpdate : 'CASCADE',
         onDelete : 'CASCADE'
     })
     follower : FollowingEntity[]
     
-    @OneToMany(()=> FollowingEntity, (f)=> f.target,{
+    @OneToMany(()=> FollowingEntity, (f)=> f.user,{
         onUpdate : 'CASCADE',
         onDelete : 'CASCADE'
     })
