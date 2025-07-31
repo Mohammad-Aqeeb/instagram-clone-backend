@@ -1,4 +1,4 @@
-import { forwardRef, HttpException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, forwardRef, HttpException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOneOptions, Not, Repository } from 'typeorm';
 
@@ -119,16 +119,16 @@ export class UserService {
             await this.fileService.deleteFile(user[field].id)
         }
 
-        const uploadedFile = this.fileService.uploadFile({
+        const uploadedFile = await this.fileService.uploadFile({
             file,
             quality : field === 'avatar' ? 5 : 20,
             imageMaxSizeMB : 20,
             type : "image"
         })
-
+        
         await this.userRepository.save({
             ...user,
-            field : uploadedFile
+            [field] : uploadedFile
         })
 
         return uploadedFile;
@@ -193,7 +193,7 @@ export class UserService {
     async getNotifications(id : number) : Promise<NotificationEntity[]>{
         const user = await this.userRepository.createQueryBuilder('user')
             .where('user.id = :id', {id})
-            .leftJoinAndSelect('user.notification', 'notification')
+            .leftJoinAndSelect('user.notifications', 'notification')
             .leftJoinAndSelect('notification.post', 'post')
             .leftJoinAndSelect('post.file', 'file')
             .leftJoinAndSelect('notification.initiatorUser', 'initiatorUser')
@@ -231,6 +231,13 @@ export class UserService {
     async followUser(id : number, userId : number) : Promise<void>{
         const user = await this.userRepository.findOneOrFail({where : {id : userId}});
         const target = await this.userRepository.findOneOrFail({where : {id}});
+
+        if(user.id === target.id) return
+        const follow = await this.getUserFollowed(id,userId);
+        
+        if(follow){
+            throw new BadRequestException("User already followed")
+        }
 
         await this.userFollowingsRepository.save({
             user,
@@ -285,10 +292,17 @@ export class UserService {
         const recentSearch = await Promise.all(
             user.recentSearch.map(async (s)=>{
                 return s.type === 'user'
-                ? { ...(await this.userRepository.findOne({ where: { id: s.itemID } })), recentSearch : s.id}
+                ? { ...(await this.userRepository.createQueryBuilder('user')
+                    .where('user.id = :id', {id : s.itemID})
+                    .leftJoinAndSelect('user.avatar', 'avatar')
+                    .getOneOrFail()
+                    ),
+                    recentSearch : s.id
+                  }
                 : { ...(await this.postService.getTagById(s.itemID)), recentSearch : s.id}
             }
         ))
+
         return recentSearch;
     }
 
@@ -314,6 +328,10 @@ export class UserService {
     }
 
     async removeRecentSearch(id : number) : Promise<void>{
+        if(!id)
+        {
+            throw new NotFoundException("Not found");
+        }
         await this.recentSearchRepository.delete(id);
     }
 }
