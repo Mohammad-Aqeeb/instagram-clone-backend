@@ -49,7 +49,6 @@ export class UserService {
             .orWhere('user_entity.email ILIKE :search', {search : `%${search}%`})
             .getMany()
 
-
         const currentUserIndexInSearchResult = users.findIndex((u) => u.id === id);
         if (currentUserIndexInSearchResult !== -1) users.splice(currentUserIndexInSearchResult, 1);
 
@@ -60,11 +59,16 @@ export class UserService {
         const user =  await this.userRepository.createQueryBuilder('user')
             .where('user.id = :id', {id})
             .leftJoinAndSelect('user.following', 'following')
+            .leftJoinAndSelect('following.target', 'followingTarget')
+            .leftJoinAndSelect('followingTarget.avatar', 'followingTargetAvatar')
             .leftJoinAndSelect('user.follower', 'follower')
+            .leftJoinAndSelect('follower.user', 'followerUser')
+            .leftJoinAndSelect('followerUser.avatar', 'followerUserAvatar')
             .leftJoinAndSelect('user.avatar', 'avatar')
             .leftJoinAndSelect('user.posts', 'posts')
             .leftJoinAndSelect('posts.file', 'file')
-            .getOneOrFail()
+            .getOneOrFail();
+        
         if(!user){
             throw new HttpException("USER_NOT_FOUND", HttpStatus.NOT_FOUND);
         }
@@ -155,11 +159,15 @@ export class UserService {
             .leftJoinAndSelect('user.posts', 'posts')
             .leftJoinAndSelect('posts.file', 'file')
             .leftJoinAndSelect('posts.tags', 'tags')
-            .leftJoinAndSelect('posts.likes', 'likes')
+            .leftJoinAndSelect('posts.like', 'likes')
+            .leftJoinAndSelect('user.follower', 'follower')
+            .leftJoinAndSelect('user.following', 'following')
             .orderBy('posts.createdAt', 'DESC')
-            .getOneOrFail()
+            .getOne()
 
-
+        if(!user){
+            throw new NotFoundException("User not found")
+        }
         user.posts = await Promise.all (
             user.posts.map(async (p)=>{
                 return {
@@ -259,11 +267,11 @@ export class UserService {
         }
     }
 
-    async getUserFollowed(id : number, userId : number) : Promise<FollowingEntity>{
+    async getUserFollowed(id : number, userId : number) : Promise<FollowingEntity | null>{
         const following = await this.userFollowingsRepository.createQueryBuilder('follow')
             .where('follow.user.id = :userId', {userId})
-            .andWhere('follow.target = :id', {id})
-            .getOneOrFail();
+            .andWhere('follow.target.id = :id', {id})
+            .getOne();
 
         return following;
     }
