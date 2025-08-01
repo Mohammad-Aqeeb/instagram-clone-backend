@@ -52,7 +52,7 @@ export class AuthService {
         await this.userService.setUpdateRefreshToken(dbUser.id, hashedRefreshToken)
 
         return {
-            user,
+            user : dbUser,
             accessToken,
             refreshToken,
         };
