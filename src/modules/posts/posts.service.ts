@@ -95,7 +95,6 @@ export class PostsService {
             .leftJoinAndSelect('user.avatar', 'avatar')
             .leftJoinAndSelect('post.file', 'file')
             .leftJoinAndSelect('post.tags', 'tags')
-            .leftJoinAndSelect('post.like', 'like')
             .orderBy('score', 'DESC')
             .groupBy('post.id')
             .addGroupBy('user.id')
@@ -130,9 +129,12 @@ export class PostsService {
             ...post,
             user : {
                 ...post.user,
-                isViewerFolled : post.user.id === user.id ? false : await this.userService.getIsUserFollowed( user.id, post.user.id)
+                isViewerFollwed : post.user.id === user.id ? false : await this.userService.getIsUserFollowed( user.id, post.user.id)
             }  as unknown as UserEntity,
             comment : tag ? [] : await this.commentRepository.find({where : {post}, order : {createdAt : 'DESC'}, take : 2}),
+            like: await this.postLikeRepository.find({
+                where: { post: { id: post.id } },
+            }),
             isViewerLiked : await this.getIsUserLikedPost(user,post),
             isPostSaved : false,
             isViewerInPhoto: false,
@@ -215,9 +217,12 @@ export class PostsService {
     }
 
     async getIsUserLikedPost(user: UserEntity, post: PostEntity): Promise<boolean> {
+        console.log(user.id);
+        console.log(post.id);
+        
         return Boolean(await this.postLikeRepository.createQueryBuilder('like')
             .where('like.user.id = :userId', {userId : user.id})
-            .where('like.post.id = :postId', {postId : post.id})
+            .andWhere('like.post.id = :postId', {postId : post.id})
             .getOne()
         );
     }
