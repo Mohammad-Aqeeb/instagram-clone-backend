@@ -6,6 +6,7 @@ import { RecentSearchEntity } from './entity/recentSearch.entity';
 import { UpdateUserDTO } from './dto/user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FileEntity } from '../files/entity/file.entity';
+import { FollowingEntity } from './entity/following.entity';
 
 @Controller('user')
 export class UserController {
