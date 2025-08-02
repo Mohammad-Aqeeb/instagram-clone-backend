@@ -119,7 +119,7 @@ export class PostsService {
             const { items, meta } = await paginate<PostEntity>(queryBuilder, options);
 
             const formattedPosts = (await Promise.all(
-            items.map(async (p) => this.formatFeedPost(p, user, tag))
+            items.map(async (p) => await this.formatFeedPost(p, user, tag))
             )) as PostEntity[];
             return { items: formattedPosts, meta };
     }
@@ -217,9 +217,6 @@ export class PostsService {
     }
 
     async getIsUserLikedPost(user: UserEntity, post: PostEntity): Promise<boolean> {
-        console.log(user.id);
-        console.log(post.id);
-        
         return Boolean(await this.postLikeRepository.createQueryBuilder('like')
             .where('like.user.id = :userId', {userId : user.id})
             .andWhere('like.post.id = :postId', {postId : post.id})
@@ -354,7 +351,7 @@ export class PostsService {
         else{
             delete payload.tags;
             Object.assign(post, payload);
-            const updatedPost = this.postRepository.save(post);
+            const updatedPost = await this.postRepository.save(post);
             return updatedPost;
         }
     }
