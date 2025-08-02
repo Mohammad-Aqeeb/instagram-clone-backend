@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { NotificationEntity } from './entity/notification.entity';
+import { NotificationEntity, NotificationType } from './entity/notification.entity';
 import { Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { createNotificationDto } from './dto/notification.dto';
@@ -72,7 +72,7 @@ export class NotificationsService {
         const notificationArray = await this.notificationRepository.createQueryBuilder('notification')
             .where('notification.initiatorUser.id = :userId', {userId})
             .andWhere('notification.receivedUser.id = :targetId', {targetId})
-            .andWhere('notification.notificationType = :type', { type: 'FOLLOW' })
+            .andWhere('notification.notificationType = :type', { type: NotificationType.FOLLOW })
             .orderBy('notification.createdAt', 'DESC')
             .take(1)
             .getMany();
