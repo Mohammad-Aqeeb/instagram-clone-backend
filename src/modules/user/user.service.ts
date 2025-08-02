@@ -43,10 +43,10 @@ export class UserService {
         }
 
         const users = await this.userRepository.createQueryBuilder('user_entity')
-            .select()
             .where('user_entity.username ILIKE :search', {search : `%${search}%`})
             .orWhere('user_entity.name ILIKE :search', {search : `%${search}%`})
             .orWhere('user_entity.email ILIKE :search', {search : `%${search}%`})
+            .leftJoinAndSelect('user_entity.avatar', 'avatar')
             .getMany()
 
         const currentUserIndexInSearchResult = users.findIndex((u) => u.id === id);
@@ -84,7 +84,7 @@ export class UserService {
     }
 
     async setUpdateRefreshToken(id :number, hashedRefreshtoken : string){
-        this.userRepository.update(id, {hashedRefreshtoken})
+        await this.userRepository.update(id, {hashedRefreshtoken})
     }
 
     async createUser(payload : CreateUserDTO): Promise<UserEntity>{
@@ -161,9 +161,13 @@ export class UserService {
             .leftJoinAndSelect('posts.tags', 'tags')
             .leftJoinAndSelect('posts.like', 'likes')
             .leftJoinAndSelect('user.follower', 'follower')
+            .leftJoinAndSelect('follower.user', 'followerUser')
+            .leftJoinAndSelect('followerUser.avatar', 'followerUserAvatar')
             .leftJoinAndSelect('user.following', 'following')
+            .leftJoinAndSelect('following.target', 'followingTarget')
+            .leftJoinAndSelect('followingTarget.avatar', 'followingTargetAvatar')
             .orderBy('posts.createdAt', 'DESC')
-            .getOne()
+            .getOne();
 
         if(!user){
             throw new NotFoundException("User not found")
@@ -227,7 +231,7 @@ export class UserService {
     }
 
     async confirmEmail(email : string){
-        const user = this.userRepository.find({where : {email}});
+        const user = await this.userRepository.find({where : {email}});
         await this.userRepository.save({
             ...user,
             isEmailConfirmed : true
@@ -277,16 +281,25 @@ export class UserService {
     }
 
     async getIsUserFollowed(currentUserID : number, targetID : number) {
-        return Boolean(this.getUserFollowed(targetID, currentUserID));
+        return Boolean( await this.getUserFollowed(targetID, currentUserID));
     }
 
     async getUserFollower(id : number) : Promise<FollowingEntity[]>{
-        const follower = this.userFollowingsRepository.createQueryBuilder('following')
+        const follower = await this.userFollowingsRepository.createQueryBuilder('following')
             .leftJoinAndSelect('follow.user' , 'user')
-            .andWhere('follow.target.id =: id' , {id})
+            .andWhere('following.target.id =: id' , {id})
             .getMany();
             
         return follower;
+    }
+
+    async getUserFollowing(id : number) : Promise<FollowingEntity[]>{
+        const following = await this.userFollowingsRepository.createQueryBuilder('following')
+            .leftJoinAndSelect('follow.user' , 'user')
+            .andWhere('follow.user.id =: id' , {id})
+            .getMany();
+            
+        return following;
     }
 
     async getRecentSearch(id : number){
