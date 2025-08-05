@@ -153,25 +153,26 @@ export class PostsService {
         const currentUserRootComment = await this.commentRepository.createQueryBuilder('comment')
             .leftJoinAndSelect('comment.user', 'user')
             .leftJoinAndSelect('user.avatar', 'avatar')
-            .leftJoinAndSelect('comment.commentLikes', 'commentLike')
-            .where('user.id = :userId', {userId})
-            .andWhere('comment.post.id = :id', {id})
+            .where('user.id = :userId', { userId })
+            .andWhere('comment.post.id = :id', { id })
             .andWhere('comment.parentComment IS NULL')
+            .loadRelationCountAndMap('comment.likeCount', 'comment.commentLikes')
             .orderBy('comment.createdAt', 'DESC')
             .getMany();
 
         const RestUserRootComment = await this.commentRepository.createQueryBuilder('comment')
             .leftJoinAndSelect('comment.user', 'user')
-            .leftJoinAndSelect('user.avatar', 'avtar')
-            .leftJoinAndSelect('comment.commentLikes', 'commentLike')
-            .where('user.id != :userId', {userId})
-            .andWhere('comment.post.id = :id', {id})
+            .leftJoinAndSelect('user.avatar', 'avatar')
+            .where('user.id != :userId', { userId })
+            .andWhere('comment.post.id = :id', { id })
             .andWhere('comment.parentComment IS NULL')
+            .loadRelationCountAndMap('comment.likeCount', 'comment.commentLikes')
             .orderBy('comment.createdAt', 'DESC')
             .getMany();
 
-        // console.log("currentUserRootComment", currentUserRootComment);
-        // console.log("RestUserRootComment", RestUserRootComment);
+
+        console.log("currentUserRootComment", currentUserRootComment);
+        console.log("RestUserRootComment", RestUserRootComment);
 
         const allComments = [...currentUserRootComment, ...RestUserRootComment]
 
@@ -453,6 +454,8 @@ export class PostsService {
             .andWhere('like.user.id = :userId', {userId})
             .getOne();
 
+        let isViewerLiked = false;
+
         if(CommentLike){
             await this.commentLikeRepository.delete(CommentLike.id);
             await this.notificationsService.deleteByCommentId(CommentLike.comment.id, userId);
@@ -464,6 +467,8 @@ export class PostsService {
             })
             const comment = await this.commentRepository.findOneOrFail({where : {id : commentLike.comment.id}, relations : ['user', 'post']})
             
+            isViewerLiked = true;
+
             await this.notificationsService.createNotification({
                 notificationType: NotificationType.LIKED_COMMENT,
                 receivedUser: comment.user,
@@ -472,5 +477,16 @@ export class PostsService {
                 post : comment.post
             });
         }
+
+        const likeCount = await this.commentLikeRepository.count({
+            where: {
+                comment: { id },
+            },
+        });
+
+        return {
+            isViewerLiked,
+            likeCount,
+        };
     }
 }
