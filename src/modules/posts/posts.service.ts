@@ -155,6 +155,7 @@ export class PostsService {
             .leftJoinAndSelect('user.avatar', 'avatar')
             .where('user.id = :userId', {userId})
             .andWhere('comment.post.id = :id', {id})
+            .andWhere('comment.parentComment IS NULL')
             .orderBy('comment.createdAt', 'DESC')
             .getMany()
 
@@ -162,12 +163,13 @@ export class PostsService {
             .leftJoinAndSelect('comment.user', 'user')
             .leftJoinAndSelect('user.avatar', 'avtar')
             .where('user.id != :userId', {userId})
-            .where('comment.post.id = :id', {id})
+            .andWhere('comment.post.id = :id', {id})
+            .andWhere('comment.parentComment IS NULL')
             .orderBy('comment.createdAt', 'DESC')
             .getMany()
     
-        console.log(currentUserRootComment);
-        console.log(RestUserRootComment);
+        console.log("currentUserRootComment", currentUserRootComment);
+        console.log("RestUserRootComment", RestUserRootComment);
         
         const allComments = [...currentUserRootComment, ...RestUserRootComment]
 
@@ -176,16 +178,17 @@ export class PostsService {
         return await Promise.all(
             allComments.map(async (c) => {
                 const { replies } = await treeRepository.findDescendantsTree(c, { relations: ['user'] });
-
+                // console.log(replies);
+                
                 return {
                 ...c,
                 replies,
                 isViewerLiked: Boolean(
-                    await this.postLikeRepository
+                await this.commentLikeRepository
                     .createQueryBuilder('commentLike')
-                    .where('commentLike.user.id = :currentUserID', { userId })
+                    .where('commentLike.user.id = :currentUserID', { currentUserID: userId })
                     .andWhere('commentLike.comment.id = :commentID', { commentID: c.id })
-                    .getRawOne()
+                    .getOne()
                 ),
                 };
             })
@@ -415,9 +418,11 @@ export class PostsService {
     async createComment({postID, replyCommentID, text} : CreateCommentDTO, userId : number) : Promise<CommentEntity>{
         const user = await this.userService.getByID(userId);
         const post = await this.postRepository.findOneOrFail({where : {id : postID}});
-
+        console.log("reply comment id", replyCommentID);
+        
         const parentComment = replyCommentID ? await this.commentRepository.findOneOrFail({where : {id : replyCommentID}}) : null;
-    
+        console.log("parentcomment" , parentComment );
+        
         const newComment = await this.commentRepository.save({
             text,
             post,
