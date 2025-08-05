@@ -61,7 +61,7 @@ export class NotificationsService {
 
     async deleteByCommentId(CommentId : number, userId : number){
         const notification = await this.notificationRepository.createQueryBuilder('notification')
-            .where('notification.CommentId.id = :CommentId' , {CommentId})
+            .where('notification.comment.id = :CommentId' , {CommentId})
             .andWhere('notification.initiatorUser.id = :userId', {userId})
             .getOneOrFail();
 
