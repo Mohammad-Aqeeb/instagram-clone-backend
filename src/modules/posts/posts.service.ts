@@ -153,24 +153,26 @@ export class PostsService {
         const currentUserRootComment = await this.commentRepository.createQueryBuilder('comment')
             .leftJoinAndSelect('comment.user', 'user')
             .leftJoinAndSelect('user.avatar', 'avatar')
+            .leftJoinAndSelect('comment.commentLikes', 'commentLike')
             .where('user.id = :userId', {userId})
             .andWhere('comment.post.id = :id', {id})
             .andWhere('comment.parentComment IS NULL')
             .orderBy('comment.createdAt', 'DESC')
-            .getMany()
+            .getMany();
 
         const RestUserRootComment = await this.commentRepository.createQueryBuilder('comment')
             .leftJoinAndSelect('comment.user', 'user')
             .leftJoinAndSelect('user.avatar', 'avtar')
+            .leftJoinAndSelect('comment.commentLikes', 'commentLike')
             .where('user.id != :userId', {userId})
             .andWhere('comment.post.id = :id', {id})
             .andWhere('comment.parentComment IS NULL')
             .orderBy('comment.createdAt', 'DESC')
-            .getMany()
-    
-        console.log("currentUserRootComment", currentUserRootComment);
-        console.log("RestUserRootComment", RestUserRootComment);
-        
+            .getMany();
+
+        // console.log("currentUserRootComment", currentUserRootComment);
+        // console.log("RestUserRootComment", RestUserRootComment);
+
         const allComments = [...currentUserRootComment, ...RestUserRootComment]
 
         const treeRepository = this.dataSource.getTreeRepository(CommentEntity);
@@ -178,8 +180,7 @@ export class PostsService {
         return await Promise.all(
             allComments.map(async (c) => {
                 const { replies } = await treeRepository.findDescendantsTree(c, { relations: ['user'] });
-                // console.log(replies);
-                
+
                 return {
                 ...c,
                 replies,
@@ -418,11 +419,9 @@ export class PostsService {
     async createComment({postID, replyCommentID, text} : CreateCommentDTO, userId : number) : Promise<CommentEntity>{
         const user = await this.userService.getByID(userId);
         const post = await this.postRepository.findOneOrFail({where : {id : postID}});
-        console.log("reply comment id", replyCommentID);
         
         const parentComment = replyCommentID ? await this.commentRepository.findOneOrFail({where : {id : replyCommentID}}) : null;
-        console.log("parentcomment" , parentComment );
-        
+
         const newComment = await this.commentRepository.save({
             text,
             post,
@@ -449,28 +448,28 @@ export class PostsService {
     async toggleCommentLike(id : number, userId : number){
         const user = await this.userService.getByID(userId);
         const CommentLike = await this.commentLikeRepository.createQueryBuilder('like')
-            .where('like.comment.id =: id ', {id})
-            .andWhere('like.user =: userId', {userId})
+            .leftJoinAndSelect('like.comment', 'likecomment')
+            .where('likecomment.id = :id ', {id})
+            .andWhere('like.user.id = :userId', {userId})
             .getOne();
-
-        if(!CommentLike){
-            throw new NotFoundException('Comment not found')
-        }
 
         if(CommentLike){
             await this.commentLikeRepository.delete(CommentLike.id);
-            await this.notificationsService.deleteByPostID(CommentLike.id, userId);
+            await this.notificationsService.deleteByCommentId(CommentLike.comment.id, userId);
         }
         else{
             const commentLike = await this.commentLikeRepository.save({
                 comment : {id},
                 user : {id : userId}
             })
+            const comment = await this.commentRepository.findOneOrFail({where : {id : commentLike.comment.id}, relations : ['user', 'post']})
+            
             await this.notificationsService.createNotification({
                 notificationType: NotificationType.LIKED_COMMENT,
-                receivedUser: commentLike.comment.user,
+                receivedUser: comment.user,
                 initiatorUser: user,
                 comment : commentLike.comment,
+                post : comment.post
             });
         }
     }
