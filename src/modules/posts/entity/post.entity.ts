@@ -20,7 +20,6 @@ export class PostEntity extends BaseEntity{
     tags : TagEntity[]
 
     @ManyToOne(()=> UserEntity, (u)=> u.posts, {
-        cascade : true,
         eager : true
     })
     user : UserEntity
