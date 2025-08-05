@@ -286,8 +286,8 @@ export class UserService {
 
     async getUserFollower(id : number) : Promise<FollowingEntity[]>{
         const follower = await this.userFollowingsRepository.createQueryBuilder('following')
-            .leftJoinAndSelect('follow.user' , 'user')
-            .andWhere('following.target.id =: id' , {id})
+            .where('following.target.id = :id' , {id})
+            .leftJoinAndSelect('following.user' , 'user')
             .getMany();
             
         return follower;
@@ -295,8 +295,8 @@ export class UserService {
 
     async getUserFollowing(id : number) : Promise<FollowingEntity[]>{
         const following = await this.userFollowingsRepository.createQueryBuilder('following')
-            .leftJoinAndSelect('follow.user' , 'user')
-            .andWhere('follow.user.id =: id' , {id})
+            .where('follow.user.id =: id' , {id})    
+            .leftJoinAndSelect('following.user' , 'user')
             .getMany();
             
         return following;
