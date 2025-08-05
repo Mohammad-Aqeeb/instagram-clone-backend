@@ -170,10 +170,6 @@ export class PostsService {
             .orderBy('comment.createdAt', 'DESC')
             .getMany();
 
-
-        console.log("currentUserRootComment", currentUserRootComment);
-        console.log("RestUserRootComment", RestUserRootComment);
-
         const allComments = [...currentUserRootComment, ...RestUserRootComment]
 
         const treeRepository = this.dataSource.getTreeRepository(CommentEntity);
