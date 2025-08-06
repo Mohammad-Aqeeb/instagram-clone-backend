@@ -30,8 +30,8 @@ export class PostsController {
     }
 
     @Get(':id')
-    async getPostById(@Param('id') id : number) : Promise<PostEntity>{
-        return await this.postService.getPostById(id)
+    async getPostById(@Param('id') id : number, @Request() req) : Promise<PostEntity>{
+        return await this.postService.getPostById(id, req.user.id)
     }
 
     @Get('comments/:id')
