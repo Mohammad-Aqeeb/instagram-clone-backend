@@ -141,11 +141,14 @@ export class PostsService {
         } as unknown as PostEntity
     }
 
-    async getPostById(id : number) : Promise<PostEntity>{
-        return await this.postRepository.findOneOrFail({
+    async getPostById(id : number, userId) : Promise<PostEntity>{
+        const user = await this.userService.getByID(userId);
+        const post = await this.postRepository.findOneOrFail({
             where : {id},
             relations : ['user', 'tags','file']
         })
+
+        return await this.formatFeedPost(post, user, '');
     }
 
     async getComments(id : number, userId : number) : Promise<Partial<CommentEntity>[]>{
