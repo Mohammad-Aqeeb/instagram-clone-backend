@@ -67,6 +67,7 @@ export class UserService {
             .leftJoinAndSelect('user.avatar', 'avatar')
             .leftJoinAndSelect('user.posts', 'posts')
             .leftJoinAndSelect('posts.file', 'file')
+            .orderBy('posts.createdAt', 'DESC')
             .getOneOrFail();
         
         if(!user){
