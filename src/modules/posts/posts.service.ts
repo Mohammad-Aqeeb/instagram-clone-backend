@@ -290,11 +290,11 @@ export class PostsService {
             })
 
             const userFollowers = await this.userService.getUserFollower(id);
-
+                        
             await Promise.all(
                 userFollowers.map(async(follower)=>{
                     await this.postFeedRepository.save({
-                        user : follower,
+                        user : follower.user,
                         post : savedPost
                     })
                     const feedCount = await this.postFeedRepository.count({ where: { user: follower.user } });
