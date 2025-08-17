@@ -249,8 +249,8 @@ export class PostsService {
 
     async getTagByName(name : string) : Promise<TagEntity>{
         return await this.tagRepository.createQueryBuilder('tag')
-            .where('tag.name =: name', {name})
-            .loadRelationCountAndMap('tag.postNumber', 'tag.post')
+            .where('tag.name = :name', {name})
+            .loadRelationCountAndMap('tag.postNumber', 'tag.posts')
             .getOneOrFail()
     }
 
